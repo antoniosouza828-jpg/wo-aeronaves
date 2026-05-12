@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel WO — Pernoite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.page{max-width:1800px;margin:0 auto;padding:1.25rem}
+
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem}
+.header-left h1{font-size:22px;font-weight:500;color:#f8fafc}
+.header-left p{font-size:12px;color:#475569;margin-top:3px}
+.header-right{display:flex;align-items:center;gap:12px}
+.conn{display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;background:#1e293b;padding:6px 14px;border-radius:20px}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#10b981}
+.conn-dot.on{animation:blink 2s infinite}
+.conn-dot.off{background:#ef4444;animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* KPIS */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.25rem}
+.kpi{background:#1e293b;border-radius:10px;padding:14px 16px;border:0.5px solid #334155}
+.kpi-n{font-size:28px;font-weight:500;color:#f8fafc;line-height:1}
+.kpi-l{font-size:11px;color:#64748b;margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
+.kpi.red .kpi-n{color:#f87171}
+.kpi.red{border-color:#450a0a}
+
+/* CONTROLS */
+.controls{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
+.btn{padding:8px 18px;border-radius:8px;border:0.5px solid #334155;background:#1e293b;color:#94a3b8;font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
+.btn:hover{background:#263348;color:#e2e8f0}
+.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.btn.primary:hover{background:#2563eb}
+.btn.danger{background:#450a0a;border-color:#7f1d1d;color:#fca5a5}
+#fileInput{display:none}
+
+/* SUMMARY */
+.summary{display:flex;gap:1.5rem;margin-bottom:1.25rem;padding:10px 16px;background:#1e293b;border-radius:8px;border:0.5px solid #334155;flex-wrap:wrap}
+.sum-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8}
+.sum-dot{width:8px;height:8px;border-radius:50%}
+
+/* TABLE */
+.tbl-wrap{background:#1e293b;border-radius:12px;border:0.5px solid #334155;overflow:hidden}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;font-weight:500;border-bottom:0.5px solid #334155;background:#162032}
+.tbl td{padding:9px 14px;border-bottom:0.5px solid #1e293b;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#162032}
+.tbl tr.finding td{background:#1a0a0a}
+.tbl tr.finding:hover td{background:#200d0d}
+
+/* CELLS */
+.ac-code{font-weight:500;font-size:14px;color:#93c5fd;letter-spacing:.5px}
+.ac-tech{font-size:11px;color:#64748b;margin-top:2px}
+.wo-count{font-size:12px;color:#94a3b8}
+.wo-list{font-size:11px;color:#64748b;margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog-cell{display:flex;align-items:center;gap:8px}
+.prog-bar{width:70px;height:4px;background:#0f172a;border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:#10b981;transition:width .4s}
+.prog-txt{font-size:11px;color:#94a3b8;min-width:30px;font-variant-numeric:tabular-nums}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500;white-space:nowrap}
+.b-done{background:#052e16;color:#4ade80}
+.b-started{background:#422006;color:#fbbf24}
+.b-pending{background:#1e293b;color:#475569;border:0.5px solid #334155}
+.b-finding{background:#450a0a;color:#f87171;animation:blink 1.5s infinite;border:0.5px solid #7f1d1d}
+.mtl{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500}
+.mtl-ok{background:#052e16;color:#4ade80}
+.mtl-nhe{background:#422006;color:#fbbf24}
+.mtl-tst{background:#3b0764;color:#d8b4fe}
+.mtl-nd{background:#1e293b;color:#334155;border:0.5px solid #334155}
+
+/* FOOTER */
+.tbl-footer{padding:8px 14px;font-size:11px;color:#334155;text-align:right;border-top:0.5px solid #334155}
+
+/* LOADING */
+.loading{text-align:center;padding:4rem;color:#475569}
+.spinner{width:32px;height:32px;border:2px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY */
+.empty{text-align:center;padding:4rem;color:#475569}
+
+@media(max-width:900px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .tbl th:nth-child(3),.tbl td:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>✈ Painel WO — Pernoite</h1>
+      <p>Sincronizado em tempo real com Supabase</p>
+    </div>
+    <div class="header-right">
+      <div class="controls" style="margin:0">
+        <button class="btn primary" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
+        <button class="btn" onclick="exportar()">📤 Exportar</button>
+        <button class="btn danger" onclick="limpar()">🗑 Limpar</button>
+      </div>
+      <div class="conn">
+        <div class="conn-dot off" id="cdot"></div>
+        <span id="clabel">Conectando...</span>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="importar(event)">
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-n" id="k-ac">—</div><div class="kpi-l">Aeronaves</div></div>
+    <div class="kpi"><div class="kpi-n" id="k-total">—</div><div class="kpi-l">WOs total</div></div>
+    <div class="kpi"><div class="kpi-n" id="k-done">—</div><div class="kpi-l">Concluídas</div></div>
+    <div class="kpi"><div class="kpi-n" id="k-pct">—</div><div class="kpi-l">Progresso</div></div>
+    <div class="kpi red"><div class="kpi-n" id="k-find">—</div><div class="kpi-l">Findings</div></div>
+  </div>
+
+  <div class="summary">
+    <div class="sum-item"><div class="sum-dot" style="background:#10b981"></div><span id="s-done">—</span></div>
+    <div class="sum-item"><div class="sum-dot" style="background:#fbbf24"></div><span id="s-and">—</span></div>
+    <div class="sum-item"><div class="sum-dot" style="background:#475569"></div><span id="s-pend">—</span></div>
+    <div class="sum-item"><div class="sum-dot" style="background:#f87171"></div><span id="s-find">—</span></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="min-width:130px">Aeronave</th>
+          <th>WOs</th>
+          <th>Tarefas</th>
+          <th style="min-width:120px">Progresso</th>
+          <th>MTL</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Conectando ao banco de dados...</p></div></td></tr>
+      </tbody>
+    </table>
+    <div class="tbl-footer" id="footer">—</div>
+  </div>
+
+</div>
+
+<script>
+const URL_ = 'https://owyohcqjyiqhabonnstq.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
+const sb = window.supabase.createClient(URL_, KEY);
+
+async function load() {
+  try {
+    const { data, error } = await sb
+      .from('aircrafts')
+      .select('*, tasks(*, findings(*))')
+      .order('code');
+    if (error) throw error;
+    render(data || []);
+    setConn(true);
+  } catch(e) {
+    setConn(false);
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="6"><div class="empty">❌ Erro: ${e.message}</div></td></tr>`;
+  }
+}
+
+function render(data) {
+  const tbody = document.getElementById('tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
+    stats(0,0,0,0,0); return;
+  }
+
+  let totalAC=data.length, totalWO=0, doneWO=0, startedWO=0, findAC=0;
+
+  const rows = data.map(ac => {
+    const tasks = ac.tasks || [];
+    const done  = tasks.filter(t => t.completed).length;
+    const started = tasks.filter(t => t.started && !t.completed).length;
+    const hasFind = tasks.some(t => t.has_finding || (t.findings||[]).some(f=>!f.resolved));
+    totalWO  += tasks.length;
+    doneWO   += done;
+    startedWO+= started;
+    if (hasFind) findAC++;
+
+    const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
+    const woNames = tasks.map(t=>t.wo_number).join(' · ');
+
+    // MTL mais crítico da aeronave
+    const mtlOrder = ['TST','NHE','OK',null];
+    const mtlVals  = tasks.map(t=>t.material);
+    let mtlBest = null;
+    for (const m of mtlOrder) { if (mtlVals.includes(m)) { mtlBest=m; break; } }
+    const mtlHtml = mtlBest === 'OK'  ? `<span class="mtl mtl-ok">OK</span>`
+                  : mtlBest === 'NHE' ? `<span class="mtl mtl-nhe">NHE</span>`
+                  : mtlBest === 'TST' ? `<span class="mtl mtl-tst">TST</span>`
+                  : `<span class="mtl mtl-nd">—</span>`;
+
+    let statusHtml;
+    if (hasFind)          statusHtml = `<span class="badge b-finding">⚠ Finding!</span>`;
+    else if (pct===100)   statusHtml = `<span class="badge b-done">✓ Concluída</span>`;
+    else if (started>0||done>0) statusHtml = `<span class="badge b-started">▶ Andamento</span>`;
+    else                  statusHtml = `<span class="badge b-pending">Aguardando</span>`;
+
+    return `<tr class="${hasFind?'finding':''}">
+      <td>
+        <div class="ac-code">${ac.code}</div>
+        <div class="ac-tech">👤 ${ac.technician||'—'}</div>
+      </td>
+      <td>
+        <div class="wo-count">${done}/${tasks.length}</div>
+      </td>
+      <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
+      <td>
+        <div class="prog-cell">
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+          <div class="prog-txt">${pct}%</div>
+        </div>
+      </td>
+      <td>${mtlHtml}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows;
+  stats(totalAC, totalWO, doneWO, startedWO, findAC);
+  document.getElementById('footer').textContent =
+    `⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
+}
+
+function stats(ac,total,done,started,findings) {
+  const pend = total - done - started;
+  document.getElementById('k-ac').textContent    = ac;
+  document.getElementById('k-total').textContent = total;
+  document.getElementById('k-done').textContent  = done;
+  document.getElementById('k-pct').textContent   = total ? Math.round(done/total*100)+'%' : '0%';
+  document.getElementById('k-find').textContent  = findings;
+  document.getElementById('s-done').textContent  = `${done} Concluída${done!==1?'s':''}`;
+  document.getElementById('s-and').textContent   = `${started} Em Andamento`;
+  document.getElementById('s-pend').textContent  = `${pend} Não Iniciada${pend!==1?'s':''}`;
+  document.getElementById('s-find').textContent  = `${findings} Aeronave${findings!==1?'s':''} com Finding`;
+}
+
+function setConn(on) {
+  document.getElementById('cdot').className   = `conn-dot ${on?'on':'off'}`;
+  document.getElementById('clabel').textContent = on ? 'Conectado ✓' : 'Desconectado';
+}
+
+async function importar(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  document.getElementById('tbody').innerHTML =
+    `<tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Importando planilha...</p></div></td></tr>`;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
+      await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
+      const map = {};
+      rows.forEach(row => {
+        const vals = Object.values(row);
+        const code = String(vals[0]||'').trim(); if (!code) return;
+        if (!map[code]) map[code] = {
+          code,
+          technician: row['TÉCNICO']||row['Technician']||row['tecnico']||'Não atribuído',
+          tasks: []
+        };
+        const wo   = String(row['WO']||row['TASK']||vals[1]||'').trim();
+        const desc = String(row['DESCRIÇÃO']||row['Description']||vals[2]||'').trim();
+        if (wo) map[code].tasks.push({wo_number:wo, description:desc});
+      });
+      for (const ac of Object.values(map)) {
+        const {data:ins} = await sb.from('aircrafts')
+          .insert([{code:ac.code, technician:ac.technician}]).select();
+        if (ins?.[0] && ac.tasks.length)
+          await sb.from('tasks').insert(
+            ac.tasks.map(t=>({aircraft_id:ins[0].id, wo_number:t.wo_number, description:t.description}))
+          );
+      }
+      await load();
+      alert('✅ Planilha importada com sucesso!');
+    } catch(err) { alert('❌ Erro: '+err.message); await load(); }
+  };
+  reader.readAsArrayBuffer(file);
+  ev.target.value = '';
+}
+
+async function exportar() {
+  const {data} = await sb.from('aircrafts').select('*, tasks(*, observations(*), findings(*))');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download = `wo-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+}
+
+async function limpar() {
+  if (!confirm('⚠️ Apagar TODOS os dados do banco? Esta ação não pode ser desfeita.')) return;
+  await sb.from('observations').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  await sb.from('findings').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  await load();
+}
+
+// Realtime
+sb.channel('painel-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'}, load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'}, load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'findings'}, load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'observations'}, load)
+  .subscribe(s => setConn(s==='SUBSCRIBED'));
+
+load();
+</script>
+</body>
+</html>
