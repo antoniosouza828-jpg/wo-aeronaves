@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WO Técnico</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f1f5f9;min-height:100vh}
+
+/* HEADER */
+.header{background:#1e3a8a;color:#fff;padding:1rem;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.625rem}
+.header-ac{font-size:20px;font-weight:500}
+.header-tech{font-size:12px;opacity:.75;margin-top:2px}
+.back-btn{background:rgba(255,255,255,.15);border:0.5px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer}
+.prog-wrap{background:rgba(255,255,255,.12);border-radius:8px;padding:10px 12px}
+.prog-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.prog-bar{height:5px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:#4ade80;transition:width .4s}
+
+/* SELEÇÃO */
+.select-wrap{padding:1.5rem 1rem}
+.select-title{font-size:20px;font-weight:500;color:#1e293b;margin-bottom:4px}
+.select-sub{font-size:13px;color:#64748b;margin-bottom:1.25rem}
+.ac-list{display:flex;flex-direction:column;gap:10px}
+.ac-card{background:#fff;border:0.5px solid #e2e8f0;border-radius:12px;padding:1rem;cursor:pointer;transition:all .15s;text-align:left;width:100%}
+.ac-card:hover,.ac-card:active{background:#eff6ff;border-color:#93c5fd;transform:translateY(-1px)}
+.ac-card-code{font-size:17px;font-weight:500;color:#1e3a8a}
+.ac-card-tech{font-size:12px;color:#64748b;margin-top:3px}
+.ac-card-meta{display:flex;gap:12px;margin-top:8px;font-size:12px;color:#94a3b8}
+.ac-card-find{color:#ef4444;font-weight:500}
+
+/* TASKS SCREEN */
+.tasks-wrap{padding:.875rem}
+
+/* INICIAR WO */
+.start-btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1rem;transition:all .2s}
+.start-btn.idle{background:#1e3a8a;color:#fff}
+.start-btn.active{background:#065f46;color:#fff}
+
+/* TASK CARD */
+.task-card{background:#fff;border-radius:12px;border:0.5px solid #e2e8f0;margin-bottom:.875rem;overflow:hidden;transition:border-color .2s}
+.task-card.finding{border-left:3px solid #dc2626;border-radius:0 12px 12px 0}
+.task-card.completed{opacity:.6}
+.task-head{padding:.875rem .875rem .5rem}
+.task-wo{font-size:14px;font-weight:500;color:#1e293b}
+.task-desc{font-size:12px;color:#64748b;margin-top:3px;line-height:1.4;margin-bottom:.625rem}
+.task-badges{display:flex;gap:5px;flex-wrap:wrap}
+.badge{padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500}
+.b-started{background:#fef3c7;color:#92400e}
+.b-done{background:#dcfce7;color:#166534}
+.b-find{background:#fee2e2;color:#991b1b}
+
+/* ACTIONS */
+.task-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 .875rem .625rem}
+.act{padding:9px 4px;border:0.5px solid #e2e8f0;background:#f8fafc;border-radius:8px;font-size:11px;font-weight:500;text-align:center;cursor:pointer;color:#475569;transition:all .15s}
+.act:active{transform:scale(.96)}
+.act:disabled{opacity:.4;cursor:default}
+.act.done-btn{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+.act.find-btn{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+
+/* MTL */
+.mtl-section{padding:0 .875rem .625rem}
+.mtl-label{font-size:10px;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.mtl-btns{display:flex;gap:6px}
+.mtl-btn{flex:1;padding:8px 4px;border:0.5px solid #e2e8f0;background:#f8fafc;border-radius:8px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;color:#475569;transition:all .15s}
+.mtl-btn:active{transform:scale(.96)}
+.mtl-btn.sel-ok{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+.mtl-btn.sel-nhe{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.mtl-btn.sel-tst{background:#f3e8ff;color:#7e22ce;border-color:#e9d5ff}
+
+/* OBS */
+.obs-section{border-top:0.5px solid #f1f5f9}
+.obs-toggle{width:100%;padding:10px .875rem;background:none;border:none;text-align:left;cursor:pointer;font-size:12px;color:#64748b;display:flex;justify-content:space-between;align-items:center}
+.obs-toggle-arrow{font-size:16px;transition:transform .2s;line-height:1}
+.obs-toggle.open .obs-toggle-arrow{transform:rotate(180deg)}
+.obs-body{display:none;padding:.625rem .875rem .875rem}
+.obs-body.open{display:block}
+.obs-input-row{display:flex;gap:6px;margin-bottom:.625rem}
+.obs-input{flex:1;padding:9px 11px;border:0.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;background:#f8fafc;color:#1e293b}
+.obs-input:focus{outline:none;border-color:#93c5fd;background:#fff}
+.obs-add-btn{padding:9px 14px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.obs-list{display:flex;flex-direction:column;gap:0}
+.obs-item{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid #f1f5f9;align-items:start}
+.obs-item:last-child{border-bottom:none}
+.obs-time{font-size:11px;font-weight:500;color:#94a3b8;padding-top:1px;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.obs-text{font-size:12px;color:#374151;line-height:1.4}
+.obs-empty{font-size:12px;color:#94a3b8;text-align:center;padding:.625rem 0}
+
+/* MODAL FINDING */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center;padding-bottom:0}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;padding:1.5rem;width:100%;max-width:480px}
+.modal-title{font-size:17px;font-weight:500;color:#1e293b;margin-bottom:1rem}
+.modal-textarea{width:100%;padding:11px;border:0.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;min-height:90px;resize:none;background:#f8fafc}
+.modal-textarea:focus{outline:none;border-color:#93c5fd}
+.modal-btns{display:flex;gap:8px;margin-top:.875rem}
+.modal-btn{flex:1;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer}
+.modal-confirm{background:#dc2626;color:#fff}
+.modal-cancel{background:#f1f5f9;color:#374151}
+
+/* LOADING */
+.loading{text-align:center;padding:3rem 1rem;color:#64748b}
+.spinner{width:28px;height:28px;border:2px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- MODAL FINDING -->
+<div class="modal-bg" id="modal">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Registrar Finding</div>
+    <textarea class="modal-textarea" id="finding-txt" placeholder="Descreva o problema encontrado..."></textarea>
+    <div class="modal-btns">
+      <button class="modal-btn modal-confirm" onclick="confirmarFinding()">Registrar</button>
+      <button class="modal-btn modal-cancel" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER (sempre visível) -->
+<div class="header" id="hdr">
+  <div class="header-row">
+    <div>
+      <div class="header-ac" id="hdr-ac">✈ WO Técnico</div>
+      <div class="header-tech" id="hdr-tech">Selecione sua aeronave</div>
+    </div>
+    <button class="back-btn" id="back-btn" onclick="voltar()" style="display:none">← Voltar</button>
+  </div>
+  <div id="hdr-prog" style="display:none">
+    <div class="prog-wrap">
+      <div class="prog-row"><span>Progresso</span><span id="prog-pct">0%</span></div>
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TELA SELEÇÃO -->
+<div id="screen-select" class="select-wrap">
+  <div class="select-title">Selecione a aeronave</div>
+  <div class="select-sub">Escolha a aeronave que você é responsável</div>
+  <div class="ac-list" id="ac-list">
+    <div class="loading"><div class="spinner"></div><p>Carregando aeronaves...</p></div>
+  </div>
+</div>
+
+<!-- TELA TASKS -->
+<div id="screen-tasks" class="tasks-wrap" style="display:none"></div>
+
+<script>
+const URL_ = 'https://owyohcqjyiqhabonnstq.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
+const sb = window.supabase.createClient(URL_, KEY);
+
+let curAC = null;        // {id, code, technician}
+let findingTaskId = null;
+let woStarted = false;
+
+// ─── HORÁRIO ───────────────────────────────────────────────
+function agora() {
+  return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ─── TELA SELEÇÃO ──────────────────────────────────────────
+async function carregarAeronaves() {
+  const list = document.getElementById('ac-list');
+  list.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando...</p></div>';
+  try {
+    const {data,error} = await sb.from('aircrafts')
+      .select('*, tasks(*)').order('code');
+    if (error) throw error;
+    if (!data.length) {
+      list.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:2rem">Nenhuma aeronave.<br>Importe um Excel no painel.</p>';
+      return;
+    }
+    list.innerHTML = '';
+    data.forEach(ac => {
+      const tasks   = ac.tasks || [];
+      const done    = tasks.filter(t=>t.completed).length;
+      const pct     = tasks.length ? Math.round(done/tasks.length*100) : 0;
+      const finds   = tasks.filter(t=>t.has_finding).length;
+      const btn     = document.createElement('button');
+      btn.className = 'ac-card';
+      btn.innerHTML = `
+        <div class="ac-card-code">${ac.code}</div>
+        <div class="ac-card-tech">👤 ${ac.technician||'Não atribuído'}</div>
+        <div class="ac-card-meta">
+          <span>📋 ${tasks.length} WOs</span>
+          <span>✓ ${pct}%</span>
+          ${finds ? `<span class="ac-card-find">⚠ ${finds} finding${finds>1?'s':''}</span>` : ''}
+        </div>`;
+      btn.onclick = () => abrirAeronave(ac.id, ac.code, ac.technician);
+      list.appendChild(btn);
+    });
+  } catch(e) {
+    list.innerHTML = `<p style="color:#ef4444;padding:1rem">Erro: ${e.message}</p>`;
+  }
+}
+
+async function abrirAeronave(id, code, tech) {
+  curAC = {id, code, tech};
+  woStarted = false;
+  document.getElementById('screen-select').style.display = 'none';
+  document.getElementById('screen-tasks').style.display  = 'block';
+  document.getElementById('hdr-ac').textContent   = `✈ ${code}`;
+  document.getElementById('hdr-tech').textContent = `👤 ${tech||''}`;
+  document.getElementById('back-btn').style.display = 'block';
+  document.getElementById('hdr-prog').style.display = 'block';
+  await carregarTasks();
+  subscrever();
+}
+
+function voltar() {
+  curAC = null; woStarted = false;
+  document.getElementById('screen-select').style.display = 'block';
+  document.getElementById('screen-tasks').style.display  = 'none';
+  document.getElementById('hdr-ac').textContent    = '✈ WO Técnico';
+  document.getElementById('hdr-tech').textContent  = 'Selecione sua aeronave';
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('hdr-prog').style.display = 'none';
+  carregarAeronaves();
+}
+
+// ─── TELA TASKS ────────────────────────────────────────────
+async function carregarTasks() {
+  const wrap = document.getElementById('screen-tasks');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando tarefas...</p></div>';
+  try {
+    const {data,error} = await sb.from('tasks')
+      .select('*, observations(*), findings(*)')
+      .eq('aircraft_id', curAC.id)
+      .order('created_at');
+    if (error) throw error;
+    renderTasks(data||[]);
+  } catch(e) {
+    wrap.innerHTML = `<p style="color:#ef4444;padding:1rem">Erro: ${e.message}</p>`;
+  }
+}
+
+function renderTasks(tasks) {
+  const done  = tasks.filter(t=>t.completed).length;
+  const total = tasks.length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  document.getElementById('prog-pct').textContent = `${pct}%`;
+  document.getElementById('prog-fill').style.width = `${pct}%`;
+
+  const wrap = document.getElementById('screen-tasks');
+  if (!tasks.length) {
+    wrap.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:3rem">Sem tarefas</p>';
+    return;
+  }
+
+  // Botão Iniciar WO
+  const isStarted = woStarted || tasks.some(t=>t.started);
+  const startHtml = `
+    <button class="start-btn ${isStarted?'active':'idle'}" id="start-wo-btn" onclick="iniciarWO()">
+      ${isStarted ? '✓ Trabalho iniciado' : '▶ Iniciar trabalho na aeronave'}
+    </button>`;
+
+  const cardsHtml = tasks.map(task => {
+    const hasFind = task.has_finding || (task.findings||[]).some(f=>!f.resolved);
+    const cls = task.completed ? 'completed' : hasFind ? 'finding' : '';
+    const badges = [
+      task.started && !task.completed ? `<span class="badge b-started">▶ Iniciada</span>` : '',
+      task.completed ? `<span class="badge b-done">✓ Concluída</span>` : '',
+      hasFind ? `<span class="badge b-find">⚠ Finding</span>` : ''
+    ].join('');
+
+    const mtlSel = {OK:'sel-ok', NHE:'sel-nhe', TST:'sel-tst'};
+    const mtlBtns = ['OK','NHE','TST'].map(m =>
+      `<button class="mtl-btn ${task.material===m?(mtlSel[m]||''):''}" onclick="setMtl('${task.id}','${m}')">${m}</button>`
+    ).join('');
+
+    const obs = (task.observations||[]);
+    const obsHtml = obs.length
+      ? obs.map(o=>`
+          <div class="obs-item">
+            <div class="obs-time">${o.recorded_at}</div>
+            <div class="obs-text">${o.text}</div>
+          </div>`).join('')
+      : `<div class="obs-empty">Nenhuma observação ainda</div>`;
+
+    return `
+    <div class="task-card ${cls}" id="tc-${task.id}">
+      <div class="task-head">
+        <div class="task-wo">${task.wo_number}</div>
+        <div class="task-desc">${task.description||'—'}</div>
+        <div class="task-badges">${badges}</div>
+      </div>
+
+      <div class="task-actions">
+        <button class="act done-btn"
+          ${!task.started||task.completed?'disabled':''} 
+          onclick="concluir('${task.id}')">
+          ✓ Concluir
+        </button>
+        <button class="act find-btn" onclick="abrirFinding('${task.id}')">⚠ Finding</button>
+        <button class="act" onclick="toggleObs('obs-${task.id}',this)">📝 Obs ${obs.length?`(${obs.length})`:''}</button>
+      </div>
+
+      <div class="mtl-section">
+        <div class="mtl-label">Material (MTL)</div>
+        <div class="mtl-btns">${mtlBtns}</div>
+      </div>
+
+      <div class="obs-section">
+        <div class="obs-body" id="obs-${task.id}">
+          <div class="obs-input-row">
+            <input class="obs-input" id="inp-${task.id}" placeholder="Digite a observação..."
+              onkeydown="if(event.key==='Enter')addObs('${task.id}')"/>
+            <button class="obs-add-btn" onclick="addObs('${task.id}')">+ Add</button>
+          </div>
+          <div class="obs-list">${obsHtml}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = startHtml + cardsHtml;
+
+  // Abrir obs se já tem registros de finding
+  tasks.forEach(t => {
+    if ((t.observations||[]).length > 0) {
+      const body = document.getElementById(`obs-${t.id}`);
+      if (body) body.classList.add('open');
+    }
+  });
+}
+
+function toggleObs(id, btn) {
+  const body = document.getElementById(id);
+  body.classList.toggle('open');
+}
+
+function subscrever() {
+  if (!curAC) return;
+  sb.channel('tasks-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'tasks',filter:`aircraft_id=eq.${curAC.id}`}, carregarTasks)
+    .on('postgres_changes',{event:'*',schema:'public',table:'observations'}, carregarTasks)
+    .on('postgres_changes',{event:'*',schema:'public',table:'findings'}, carregarTasks)
+    .subscribe();
+}
+
+// ─── AÇÕES ─────────────────────────────────────────────────
+async function iniciarWO() {
+  if (woStarted) return;
+  woStarted = true;
+  const btn = document.getElementById('start-wo-btn');
+  if (btn) { btn.className='start-btn active'; btn.textContent='✓ Trabalho iniciado'; }
+  // Marcar todas as tasks como iniciadas
+  const hora = agora();
+  const {data} = await sb.from('tasks')
+    .select('id').eq('aircraft_id', curAC.id).eq('started', false);
+  if (data?.length) {
+    await sb.from('tasks')
+      .update({started:true, started_at: new Date().toISOString()})
+      .in('id', data.map(t=>t.id));
+  }
+}
+
+async function concluir(taskId) {
+  await sb.from('tasks').update({
+    completed: true,
+    completed_at: new Date().toISOString()
+  }).eq('id', taskId);
+  // Registrar obs automática
+  await sb.from('observations').insert([{
+    task_id: taskId,
+    text: 'Tarefa concluída.',
+    recorded_at: agora()
+  }]);
+  await carregarTasks();
+}
+
+async function setMtl(taskId, material) {
+  await sb.from('tasks').update({material}).eq('id', taskId);
+  await carregarTasks();
+}
+
+function abrirFinding(taskId) {
+  findingTaskId = taskId;
+  document.getElementById('finding-txt').value = '';
+  document.getElementById('modal').classList.add('show');
+  setTimeout(() => document.getElementById('finding-txt').focus(), 100);
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('show');
+  findingTaskId = null;
+}
+
+async function confirmarFinding() {
+  const desc = document.getElementById('finding-txt').value.trim();
+  if (!desc) { alert('Descreva o finding!'); return; }
+  const hora = agora();
+  await sb.from('tasks').update({has_finding:true}).eq('id', findingTaskId);
+  await sb.from('findings').insert([{task_id:findingTaskId, description:desc}]);
+  // Obs automática com horário
+  await sb.from('observations').insert([{
+    task_id: findingTaskId,
+    text: `[Finding] ${desc}`,
+    recorded_at: hora
+  }]);
+  fecharModal();
+  await carregarTasks();
+}
+
+async function addObs(taskId) {
+  const inp  = document.getElementById(`inp-${taskId}`);
+  const text = inp.value.trim();
+  if (!text) return;
+  await sb.from('observations').insert([{
+    task_id: taskId,
+    text,
+    recorded_at: agora()
+  }]);
+  inp.value = '';
+  await carregarTasks();
+}
+
+// Fechar modal ao clicar fora
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') fecharModal();
+});
+
+// Iniciar
+carregarAeronaves();
+</script>
+</body>
+</html>
