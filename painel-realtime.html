@@ -266,17 +266,46 @@ async function importar(ev) {
       await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
       await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
       const map = {};
+      // Detectar formato: padrão simples ou formato avançado (com linha de header por aeronave)
+      let tecnicoAtual = 'Não atribuído';
+
       rows.forEach(row => {
         const vals = Object.values(row);
-        const code = String(vals[0]||'').trim(); if (!code) return;
-        if (!map[code]) map[code] = {
-          code,
-          technician: row['TÉCNICO']||row['Technician']||row['tecnico']||'Não atribuído',
-          tasks: []
-        };
-        const wo   = String(row['WO']||row['TASK']||vals[1]||'').trim();
-        const desc = String(row['DESCRIÇÃO']||row['Description']||vals[2]||'').trim();
-        if (wo) map[code].tasks.push({wo_number:wo, description:desc});
+        const col0 = String(vals[0]||'').trim(); // Aeronave
+        const col1 = String(vals[1]||'').trim(); // WO ou datas
+        const col2 = String(vals[2]||'').trim(); // Descrição ou técnico
+        const col3 = String(vals[3]||'').trim(); // Prioridade ou PRIORIDADE
+
+        if (!col0) return;
+
+        // Detectar linha de HEADER da aeronave (col1 contém BOX ou datas, col3 = PRIORIDADE)
+        const isHeader = col3 === 'PRIORIDADE' || 
+                        col1.includes('BOX') || 
+                        col1.includes('|') ||
+                        (col2 && !col1.match(/^\d{5,}$/) && col3.toUpperCase() === 'PRIORIDADE');
+
+        if (isHeader) {
+          // Extrair técnico: pode estar em col2 ou col3
+          const possibleTech = col2 || col3;
+          if (possibleTech && possibleTech !== 'PRIORIDADE') {
+            tecnicoAtual = possibleTech;
+          }
+          // Criar aeronave se não existir
+          if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
+          else map[col0].technician = tecnicoAtual;
+          return;
+        }
+
+        // Linha de TASK
+        const code = col0;
+        const wo   = col1;
+        const desc = col2;
+
+        // WO deve ser número ou string não vazia
+        if (!wo || wo === 'PRIORIDADE') return;
+
+        if (!map[code]) map[code] = { code, technician: tecnicoAtual, tasks: [] };
+        if (wo) map[code].tasks.push({wo_number: wo, description: desc});
       });
       for (const ac of Object.values(map)) {
         const {data:ins} = await sb.from('aircrafts')
