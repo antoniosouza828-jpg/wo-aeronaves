@@ -554,8 +554,13 @@ async function salvarTurno(){
     let tWO=0,dWO=0,fCount=0;
     aeros.forEach(ac=>{
       const tasks=ac.tasks||[];
-      tWO+=tasks.length;
-      dWO+=tasks.filter(t=>t.completed).length;
+      const wosU=[...new Set(tasks.map(t=>t.wo_number))];
+      tWO+=wosU.length;
+      // WO concluída = todas as tarefas da WO concluídas
+      wosU.forEach(wo=>{
+        const woTasks=tasks.filter(t=>t.wo_number===wo);
+        if(woTasks.every(t=>t.completed)) dWO++;
+      });
       fCount+=tasks.filter(t=>t.has_finding).length;
     });
     const pct=tWO?Math.round(dWO/tWO*100):0;
@@ -579,7 +584,8 @@ async function salvarTurno(){
     // Inserir aeronaves e tasks com snapshot completo
     for(const ac of aeros){
       const tasks=ac.tasks||[];
-      const done=tasks.filter(t=>t.completed).length;
+      const wosU=[...new Set(tasks.map(t=>t.wo_number))];
+      const woConcluidas=wosU.filter(wo=>tasks.filter(t=>t.wo_number===wo).every(t=>t.completed)).length;
       const hasFind=tasks.some(t=>t.has_finding);
       const mtlOrd=['TST','NHE','OK',null];
       const mtlVals=tasks.map(t=>t.material);
@@ -590,10 +596,10 @@ async function salvarTurno(){
         turno_id:turnoId,
         codigo:ac.code,
         tecnico:ac.technician,
-        wo_total:tasks.length,
-        wo_concluidas:done,
-        wo_pendentes:tasks.length-done,
-        pct_conclusao:tasks.length?Math.round(done/tasks.length*100):0,
+        wo_total:wosU.length,
+        wo_concluidas:woConcluidas,
+        wo_pendentes:wosU.length-woConcluidas,
+        pct_conclusao:tasks.length?Math.round(tasks.filter(t=>t.completed).length/tasks.length*100):0,
         tem_finding:hasFind,
         mtl_critico:mtlBest
       }]).select();
