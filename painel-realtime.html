@@ -162,7 +162,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 
   <div class="kpis">
     <div class="kpi"><div class="kpi-n" id="k-ac">—</div><div class="kpi-l">Aeronaves</div></div>
-    <div class="kpi"><div class="kpi-n" id="k-total">—</div><div class="kpi-l">WOs total</div></div>
+    <div class="kpi"><div class="kpi-n" id="k-wo">—</div><div class="kpi-l">WOs</div></div>
+    <div class="kpi"><div class="kpi-n" id="k-total">—</div><div class="kpi-l">Tarefas</div></div>
     <div class="kpi"><div class="kpi-n" id="k-done">—</div><div class="kpi-l">Concluídas</div></div>
     <div class="kpi"><div class="kpi-n" id="k-pct">—</div><div class="kpi-l">Progresso</div></div>
     <div class="kpi red"><div class="kpi-n" id="k-find">—</div><div class="kpi-l">Findings</div></div>
@@ -224,10 +225,10 @@ function render(data){
   const tbody=document.getElementById('tbody');
   if(!data.length){
     tbody.innerHTML=`<tr><td colspan="6"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
-    stats(0,0,0,0,0);return;
+    stats(0,0,0,0,0,0);return;
   }
 
-  let tAC=data.length,tWO=0,dWO=0,sWO=0,fAC=0;
+  let tAC=data.length,tWO=0,dWO=0,sWO=0,fAC=0,tWOunicas=0;
 
   const html=data.map(ac=>{
     const tasks=ac.tasks||[];
@@ -240,6 +241,7 @@ function render(data){
     const pct=tasks.length?Math.round(done/tasks.length*100):0;
     // WOs únicas (sem repetição)
     const wosUnicas=[...new Set(tasks.map(t=>t.wo_number))];
+    tWOunicas+=wosUnicas.length;
     const woNames=wosUnicas.join(' · ');
 
     const mo=['TST','NHE','OK',null];
@@ -324,8 +326,8 @@ function render(data){
         </div>
       </td>
       <td>
-        <div class="wo-count">${done}/${tasks.length}</div>
-        <div style="font-size:10px;color:#475569;margin-top:2px">${wosUnicas.length} WO${wosUnicas.length!==1?'s':''}</div>
+        <div class="wo-count">${wosUnicas.length} WO${wosUnicas.length!==1?'s':''}</div>
+        <div style="font-size:10px;color:#475569;margin-top:2px">${done}/${tasks.length} tarefa${tasks.length!==1?'s':''}</div>
       </td>
       <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
       <td>
@@ -346,7 +348,7 @@ function render(data){
 
   tbody.innerHTML=html;
   verificarNovosFindings(data);
-  stats(tAC,tWO,dWO,sWO,fAC);
+  stats(tAC,tWOunicas,tWO,dWO,sWO,fAC);
   document.getElementById('footer').textContent=`⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
   ajustarEscala(data.length);
 }
@@ -443,9 +445,10 @@ async function enviarObs(taskId){
   // Não precisa recarregar - o realtime vai atualizar
 }
 
-function stats(ac,total,done,started,findings){
+function stats(ac,wos,total,done,started,findings){
   const pend=total-done-started;
   document.getElementById('k-ac').textContent=ac;
+  document.getElementById('k-wo').textContent=wos;
   document.getElementById('k-total').textContent=total;
   document.getElementById('k-done').textContent=done;
   document.getElementById('k-pct').textContent=total?Math.round(done/total*100)+'%':'0%';
