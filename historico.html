@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histórico de Turnos — WO Pernoite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.page{max-width:1400px;margin:0 auto;padding:1.5rem}
+
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.header h1{font-size:22px;font-weight:500;color:#f8fafc}
+.header p{font-size:12px;color:#475569;margin-top:3px}
+.btn{padding:8px 18px;border-radius:8px;border:0.5px solid #334155;background:#1e293b;color:#94a3b8;font-size:13px;cursor:pointer;font-weight:500;text-decoration:none;display:inline-block}
+.btn:hover{background:#263348;color:#e2e8f0}
+.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+
+/* GRID DE TURNOS */
+.turnos-grid{display:flex;flex-direction:column;gap:12px}
+
+.turno-card{background:#1e293b;border-radius:12px;border:0.5px solid #334155;overflow:hidden}
+.turno-header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:14px 18px;cursor:pointer}
+.turno-header:hover{background:#263348}
+.turno-date{font-size:15px;font-weight:500;color:#f8fafc}
+.turno-sub{font-size:11px;color:#64748b;margin-top:2px}
+.turno-kpis{display:flex;gap:20px;flex-wrap:wrap}
+.tkpi{text-align:center}
+.tkpi-n{font-size:18px;font-weight:500;color:#f8fafc;line-height:1}
+.tkpi-l{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.tkpi-n.verde{color:#4ade80}
+.tkpi-n.amarelo{color:#fbbf24}
+.tkpi-n.vermelho{color:#f87171}
+.turno-arrow{font-size:12px;color:#475569;transition:transform .2s}
+.turno-arrow.open{transform:rotate(90deg)}
+
+/* DETALHE DO TURNO */
+.turno-detail{display:none;border-top:0.5px solid #334155}
+.turno-detail.open{display:block}
+
+.aero-section{border-bottom:0.5px solid #1e293b}
+.aero-section:last-child{border-bottom:none}
+.aero-header{display:flex;align-items:center;gap:12px;padding:10px 18px;background:#162032;cursor:pointer;flex-wrap:wrap}
+.aero-header:hover{background:#1a2840}
+.aero-code{font-size:13px;font-weight:500;color:#93c5fd}
+.aero-tech{font-size:11px;color:#64748b}
+.aero-stats{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
+.astat{font-size:11px;color:#94a3b8}
+.aero-arrow{font-size:10px;color:#475569;transition:transform .2s}
+.aero-arrow.open{transform:rotate(90deg)}
+
+/* WOs */
+.wo-list-wrap{display:none;padding:0 18px 12px 32px}
+.wo-list-wrap.open{display:block}
+.wo-item{border:0.5px solid #1e293b;border-radius:8px;margin-top:8px;overflow:hidden}
+.wo-item.concluida{border-color:#052e16}
+.wo-item.finding{border-color:#7f1d1d}
+.wo-top{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0f172a;flex-wrap:wrap}
+.wo-num{font-size:12px;font-weight:500;color:#e2e8f0}
+.wo-desc{font-size:11px;color:#64748b;padding:6px 12px;line-height:1.4;border-bottom:0.5px solid #1e293b}
+
+/* BADGE */
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500}
+.b-done{background:#052e16;color:#4ade80}
+.b-pend{background:#1e293b;color:#475569;border:0.5px solid #334155}
+.b-find{background:#450a0a;color:#f87171}
+.mtl-ok{background:#052e16;color:#4ade80;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
+.mtl-nhe{background:#422006;color:#fbbf24;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
+.mtl-tst{background:#3b0764;color:#d8b4fe;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
+
+/* OBS */
+.obs-section{padding:8px 12px}
+.obs-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.obs-row{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:4px 0;border-bottom:0.5px solid #1e293b;align-items:start}
+.obs-row:last-child{border-bottom:none}
+.obs-time{font-size:10px;color:#64748b;font-variant-numeric:tabular-nums}
+.obs-txt{font-size:11px;color:#94a3b8;line-height:1.4}
+.obs-txt.lider{color:#60a5fa}
+
+/* FINDINGS */
+.find-section{padding:6px 12px;border-top:0.5px solid #1e293b}
+.find-row{font-size:11px;padding:3px 0}
+.find-row.open{color:#f87171}
+.find-row.resolved{color:#4ade80}
+
+/* EMPTY / LOADING */
+.loading{text-align:center;padding:4rem;color:#475569}
+.spinner{width:30px;height:30px;border:2px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:4rem;color:#475569;font-size:14px}
+
+@media(max-width:700px){.turno-kpis{gap:12px}.tkpi-n{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <h1>📋 Histórico de Turnos</h1>
+      <p>Todos os turnos encerrados com detalhes completos</p>
+    </div>
+    <a href="painel-realtime.html" class="btn">← Voltar ao Painel</a>
+  </div>
+
+  <div class="turnos-grid" id="turnos-grid">
+    <div class="loading"><div class="spinner"></div><p>Carregando histórico...</p></div>
+  </div>
+</div>
+
+<script>
+const URL_='https://owyohcqjyiqhabonnstq.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
+const sb=window.supabase.createClient(URL_,KEY);
+
+const openTurnos=new Set();
+const openAeros=new Set();
+
+async function load(){
+  const grid=document.getElementById('turnos-grid');
+  try{
+    const{data,error}=await sb.from('turnos')
+      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .order('criado_em',{ascending:false});
+    if(error)throw error;
+    if(!data.length){
+      grid.innerHTML='<div class="empty">📭 Nenhum turno encerrado ainda.<br>Use o botão "Encerrar Turno" no painel para salvar o histórico.</div>';
+      return;
+    }
+    grid.innerHTML=data.map(t=>renderTurno(t)).join('');
+  }catch(e){
+    grid.innerHTML=`<div class="empty">❌ Erro: ${e.message}</div>`;
+  }
+}
+
+function fmt(dt){
+  if(!dt)return '—';
+  const d=new Date(dt);
+  return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderTurno(t){
+  const isOpen=openTurnos.has(t.id);
+  const aeros=t.turno_aeronaves||[];
+  const dataFmt=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+
+  const aerosHtml=aeros.map(a=>renderAero(t.id,a)).join('');
+
+  return `<div class="turno-card">
+    <div class="turno-header" onclick="toggleTurno('${t.id}')">
+      <div>
+        <div class="turno-date">📅 ${dataFmt}</div>
+        <div class="turno-sub">Encerrado em ${fmt(t.encerrado_em)} · ${t.total_aero} aeronave${t.total_aero!==1?'s':''}</div>
+      </div>
+      <div class="turno-kpis">
+        <div class="tkpi"><div class="tkpi-n">${t.total_wo||0}</div><div class="tkpi-l">WOs</div></div>
+        <div class="tkpi"><div class="tkpi-n verde">${t.wo_concluidas||0}</div><div class="tkpi-l">Concluídas</div></div>
+        <div class="tkpi"><div class="tkpi-n amarelo">${t.wo_pendentes||0}</div><div class="tkpi-l">Pendentes</div></div>
+        <div class="tkpi"><div class="tkpi-n ${t.total_findings>0?'vermelho':'verde'}">${t.total_findings||0}</div><div class="tkpi-l">Findings</div></div>
+        <div class="tkpi"><div class="tkpi-n ${t.pct_conclusao>=80?'verde':t.pct_conclusao>=50?'amarelo':'vermelho'}">${t.pct_conclusao||0}%</div><div class="tkpi-l">Conclusão</div></div>
+      </div>
+      <span class="turno-arrow ${isOpen?'open':''}" id="ta-${t.id}">▶</span>
+    </div>
+    <div class="turno-detail ${isOpen?'open':''}" id="td-${t.id}">
+      ${aerosHtml||'<div style="padding:1rem;color:#475569;font-size:13px">Sem aeronaves registradas.</div>'}
+    </div>
+  </div>`;
+}
+
+function renderAero(turnoId,a){
+  const key=`${turnoId}-${a.id}`;
+  const isOpen=openAeros.has(key);
+  const tasks=a.turno_tarefas||[];
+  const mtlBadge=a.mtl_critico==='OK'?'<span class="mtl-ok">OK</span>':a.mtl_critico==='NHE'?'<span class="mtl-nhe">NHE</span>':a.mtl_critico==='TST'?'<span class="mtl-tst">TST</span>':'';
+
+  const wosHtml=tasks.map(t=>renderWO(t)).join('');
+
+  return `<div class="aero-section">
+    <div class="aero-header" onclick="toggleAero('${key}')">
+      <span class="aero-arrow ${isOpen?'open':''}" id="aa-${key}">▶</span>
+      <div>
+        <div class="aero-code">${a.codigo}</div>
+        <div class="aero-tech">👤 ${a.tecnico||'—'}</div>
+      </div>
+      <div class="aero-stats">
+        <span class="astat">✓ ${a.wo_concluidas}/${a.wo_total} WOs</span>
+        <span class="astat">${a.pct_conclusao}%</span>
+        ${a.tem_finding?'<span class="badge b-find">⚠ Finding</span>':''}
+        ${mtlBadge}
+      </div>
+    </div>
+    <div class="wo-list-wrap ${isOpen?'open':''}" id="aw-${key}">
+      ${wosHtml||'<div style="color:#475569;font-size:12px;padding:8px 0">Sem WOs registradas.</div>'}
+    </div>
+  </div>`;
+}
+
+function renderWO(task){
+  const obs=(task.observacoes||[]);
+  const finds=(task.findings||[]);
+  const mtlB=task.material==='OK'?'<span class="mtl-ok">OK</span>':task.material==='NHE'?'<span class="mtl-nhe">NHE</span>':task.material==='TST'?'<span class="mtl-tst">TST</span>':'';
+
+  const obsHtml=obs.length
+    ?obs.map(o=>`<div class="obs-row">
+        <div class="obs-time">${o.recorded_at||'--:--'}</div>
+        <div class="obs-txt ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div>
+      </div>`).join('')
+    :'<div style="font-size:11px;color:#334155;padding:4px 0">Sem observações.</div>';
+
+  const findHtml=finds.length
+    ?finds.map(f=>`<div class="find-row ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('')
+    :'';
+
+  return `<div class="wo-item ${task.concluida?'concluida':task.has_finding?'finding':''}">
+    <div class="wo-top">
+      <span class="wo-num">WO ${task.wo_number}</span>
+      ${task.concluida?'<span class="badge b-done">✓ Concluída</span>':task.has_finding?'<span class="badge b-find">⚠ Finding</span>':'<span class="badge b-pend">Pendente</span>'}
+      ${mtlB}
+      ${task.concluida_em?`<span style="font-size:10px;color:#64748b;margin-left:auto">Concluída às ${new Date(task.concluida_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
+    </div>
+    ${task.descricao?`<div class="wo-desc">${task.descricao}</div>`:''}
+    ${findHtml?`<div class="find-section">${findHtml}</div>`:''}
+    <div class="obs-section">
+      <div class="obs-label">Observações (${obs.length})</div>
+      ${obsHtml}
+    </div>
+  </div>`;
+}
+
+function toggleTurno(id){
+  const el=document.getElementById(`td-${id}`);
+  const ar=document.getElementById(`ta-${id}`);
+  if(openTurnos.has(id)){openTurnos.delete(id);el.classList.remove('open');ar.classList.remove('open');}
+  else{openTurnos.add(id);el.classList.add('open');ar.classList.add('open');}
+}
+
+function toggleAero(key){
+  const el=document.getElementById(`aw-${key}`);
+  const ar=document.getElementById(`aa-${key}`);
+  if(openAeros.has(key)){openAeros.delete(key);el.classList.remove('open');ar.classList.remove('open');}
+  else{openAeros.add(key);el.classList.add('open');ar.classList.add('open');}
+}
+
+load();
+</script>
+</body>
+</html>

@@ -131,6 +131,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
       <div class="controls">
         <button class="btn primary" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
         <button class="btn" onclick="exportar()">📤 Exportar</button>
+        <button class="btn" onclick="window.open('historico.html','_blank')" style="background:#1e293b;border-color:#334155">📋 Histórico</button>
+        <button class="btn" onclick="encerrarTurno()" style="background:#422006;border-color:#92400e;color:#fbbf24">⏹ Encerrar Turno</button>
         <button class="btn danger" onclick="limpar()">🗑 Limpar</button>
       </div>
       <div class="conn">
@@ -402,6 +404,108 @@ async function exportar(){
   a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   a.download=`wo-backup-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
+}
+
+async function encerrarTurno(confirmado=false){
+  if(!confirmado){
+    if(!confirm('⏹ Encerrar o turno atual?\n\nTodos os dados serão salvos no histórico e o painel será limpo para o próximo turno.'))return;
+  }
+  await salvarTurno();
+}
+
+async function salvarTurno(){
+  try{
+    const{data:aeros,error}=await sb.from('aircrafts')
+      .select('*,tasks(*,findings(*),observations(*))').order('code');
+    if(error||!aeros?.length){alert('❌ Nenhum dado para salvar.');return;}
+
+    // Calcular totais do turno
+    let tWO=0,dWO=0,fCount=0;
+    aeros.forEach(ac=>{
+      const tasks=ac.tasks||[];
+      tWO+=tasks.length;
+      dWO+=tasks.filter(t=>t.completed).length;
+      fCount+=tasks.filter(t=>t.has_finding).length;
+    });
+    const pct=tWO?Math.round(dWO/tWO*100):0;
+    const hoje=new Date().toISOString().split('T')[0];
+
+    // Inserir turno
+    const{data:turno,error:e2}=await sb.from('turnos').insert([{
+      data_turno:hoje,
+      inicio:aeros[0]?.tasks?.[0]?.started_at||new Date().toISOString(),
+      encerrado_em:new Date().toISOString(),
+      total_aero:aeros.length,
+      total_wo:tWO,
+      wo_concluidas:dWO,
+      wo_pendentes:tWO-dWO,
+      total_findings:fCount,
+      pct_conclusao:pct
+    }]).select();
+    if(e2)throw e2;
+    const turnoId=turno[0].id;
+
+    // Inserir aeronaves e tasks com snapshot completo
+    for(const ac of aeros){
+      const tasks=ac.tasks||[];
+      const done=tasks.filter(t=>t.completed).length;
+      const hasFind=tasks.some(t=>t.has_finding);
+      const mtlOrd=['TST','NHE','OK',null];
+      const mtlVals=tasks.map(t=>t.material);
+      let mtlBest=null;
+      for(const m of mtlOrd){if(mtlVals.includes(m)){mtlBest=m;break;}}
+
+      const{data:taero}=await sb.from('turno_aeronaves').insert([{
+        turno_id:turnoId,
+        codigo:ac.code,
+        tecnico:ac.technician,
+        wo_total:tasks.length,
+        wo_concluidas:done,
+        wo_pendentes:tasks.length-done,
+        pct_conclusao:tasks.length?Math.round(done/tasks.length*100):0,
+        tem_finding:hasFind,
+        mtl_critico:mtlBest
+      }]).select();
+
+      const aeroId=taero?.[0]?.id;
+      if(!aeroId)continue;
+
+      // Salvar cada task com obs e findings como JSONB
+      for(const task of tasks){
+        const obs=(task.observations||[])
+          .sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''))
+          .map(o=>({text:o.text,recorded_at:o.recorded_at}));
+        const finds=(task.findings||[])
+          .map(f=>({description:f.description,resolved:f.resolved}));
+
+        await sb.from('turno_tarefas').insert([{
+          turno_id:turnoId,
+          turno_aeronave_id:aeroId,
+          wo_number:task.wo_number,
+          descricao:task.description,
+          concluida:task.completed||false,
+          has_finding:task.has_finding||false,
+          material:task.material,
+          iniciada_em:task.started_at,
+          concluida_em:task.completed_at,
+          observacoes:obs,
+          findings:finds
+        }]);
+      }
+    }
+
+    // Limpar dados atuais
+    await sb.from('observations').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await sb.from('findings').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await load();
+    if(confirm('✅ Turno encerrado e salvo no histórico!\n\nAbrir página de histórico agora?')){
+      window.open('historico.html','_blank');
+    }
+  }catch(err){
+    alert('❌ Erro ao salvar turno: '+err.message);
+  }
 }
 
 async function limpar(){
