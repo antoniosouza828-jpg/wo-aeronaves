@@ -262,50 +262,49 @@ async function importar(ev) {
   reader.onload = async e => {
     try {
       const wb   = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      // Usar header:1 para ler como arrays brutos, ignorando a primeira linha como header
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
       await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
       await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
       const map = {};
-      // Detectar formato: padrão simples ou formato avançado (com linha de header por aeronave)
       let tecnicoAtual = 'Não atribuído';
 
+      // Padrão de código de aeronave: XX-XXX (ex: PR-YXA, PS-ADN)
+      const reAC = /^[A-Z]{2}-[A-Z0-9]{2,4}$/;
+
       rows.forEach(row => {
-        const vals = Object.values(row);
-        const col0 = String(vals[0]||'').trim(); // Aeronave
-        const col1 = String(vals[1]||'').trim(); // WO ou datas
-        const col2 = String(vals[2]||'').trim(); // Descrição ou técnico
-        const col3 = String(vals[3]||'').trim(); // Prioridade ou PRIORIDADE
+        const col0 = String(row[0]||'').trim();
+        const col1 = String(row[1]||'').trim();
+        const col2 = String(row[2]||'').trim();
+        const col3 = String(row[3]||'').trim();
+        const col4 = String(row[4]||'').trim();
 
-        if (!col0) return;
+        // Ignorar linhas sem código de aeronave válido
+        if (!reAC.test(col0)) return;
 
-        // Detectar linha de HEADER da aeronave (col1 contém BOX ou datas, col3 = PRIORIDADE)
-        const isHeader = col3 === 'PRIORIDADE' || 
-                        col1.includes('BOX') || 
-                        col1.includes('|') ||
-                        (col2 && !col1.match(/^\d{5,}$/) && col3.toUpperCase() === 'PRIORIDADE');
+        // Linha de HEADER da aeronave:
+        // col1 contém datas/BOX OU col3 é "PRIORIDADE"
+        const isHeader = col3.toUpperCase() === 'PRIORIDADE'
+                      || col1.toUpperCase().includes('BOX')
+                      || col1.includes('|');
 
         if (isHeader) {
-          // Extrair técnico: pode estar em col2 ou col3
-          const possibleTech = col2 || col3;
-          if (possibleTech && possibleTech !== 'PRIORIDADE') {
-            tecnicoAtual = possibleTech;
+          // Técnico está em col2 (ex: "GARCIA - MATHEUS")
+          if (col2 && col2.toUpperCase() !== 'PRIORIDADE') {
+            tecnicoAtual = col2;
           }
-          // Criar aeronave se não existir
           if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
           else map[col0].technician = tecnicoAtual;
           return;
         }
 
-        // Linha de TASK
-        const code = col0;
+        // Linha de TASK: col1 é o número da WO (numérico ou alfanumérico)
         const wo   = col1;
         const desc = col2;
+        if (!wo) return;
 
-        // WO deve ser número ou string não vazia
-        if (!wo || wo === 'PRIORIDADE') return;
-
-        if (!map[code]) map[code] = { code, technician: tecnicoAtual, tasks: [] };
-        if (wo) map[code].tasks.push({wo_number: wo, description: desc});
+        if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
+        map[col0].tasks.push({wo_number: wo, description: desc});
       });
       for (const ac of Object.values(map)) {
         const {data:ins} = await sb.from('aircrafts')
