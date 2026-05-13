@@ -132,6 +132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
         <button class="btn primary" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
         <button class="btn" onclick="exportar()">📤 Exportar</button>
         <button class="btn" onclick="window.open('historico.html','_blank')" style="background:#1e293b;border-color:#334155">📋 Histórico</button>
+        <button class="btn" id="btn-som" onclick="toggleSom()" style="background:#1e293b;border-color:#334155">🔔 Som ON</button>
         <button class="btn" onclick="encerrarTurno()" style="background:#422006;border-color:#92400e;color:#fbbf24">⏹ Encerrar Turno</button>
         <button class="btn danger" onclick="limpar()">🗑 Limpar</button>
       </div>
@@ -306,6 +307,7 @@ function render(data){
   }).join('');
 
   tbody.innerHTML=html;
+  verificarNovosFindings(data);
   stats(tAC,tWO,dWO,sWO,fAC);
   document.getElementById('footer').textContent=`⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
 }
@@ -517,6 +519,64 @@ async function limpar(){
   await load();
 }
 
+// ═══════════════════════════════════════
+// NOTIFICAÇÃO SONORA — FINDINGS
+// ═══════════════════════════════════════
+let somAtivo = true;
+let findingsConhecidos = new Set();
+let primeiroLoad = true;
+
+function toggleSom(){
+  somAtivo = !somAtivo;
+  const btn = document.getElementById('btn-som');
+  btn.textContent = somAtivo ? '🔔 Som ON' : '🔕 Som OFF';
+  btn.style.color = somAtivo ? '#94a3b8' : '#475569';
+}
+
+function tocarAlerta(){
+  if(!somAtivo) return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // 3 bipes urgentes
+    [0, 0.35, 0.7].forEach(offset => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + offset + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + offset + 0.28);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.3);
+    });
+  }catch(e){}
+}
+
+function verificarNovosFindings(data){
+  if(primeiroLoad){
+    // No primeiro load só registra os findings existentes, não alerta
+    data.forEach(ac=>(ac.tasks||[]).forEach(t=>{
+      if(t.has_finding||(t.findings||[]).some(f=>!f.resolved))
+        findingsConhecidos.add(t.id);
+    }));
+    primeiroLoad = false;
+    return;
+  }
+  let novo = false;
+  data.forEach(ac=>(ac.tasks||[]).forEach(t=>{
+    const temFind = t.has_finding||(t.findings||[]).some(f=>!f.resolved);
+    if(temFind && !findingsConhecidos.has(t.id)){
+      findingsConhecidos.add(t.id);
+      novo = true;
+    }
+    if(!temFind) findingsConhecidos.delete(t.id);
+  }));
+  if(novo) tocarAlerta();
+}
+
+// ═══════════════════════════════════════
 // Realtime — mantém painéis abertos ao atualizar
 sb.channel('painel-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},load)
