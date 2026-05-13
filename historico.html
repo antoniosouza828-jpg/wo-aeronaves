@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Histórico de Turnos — WO Pernoite</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -100,7 +103,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
       <h1>📋 Histórico de Turnos</h1>
       <p>Todos os turnos encerrados com detalhes completos</p>
     </div>
-    <a href="painel-realtime.html" class="btn">← Voltar ao Painel</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="exportarExcel()" style="background:#052e16;border-color:#166534;color:#4ade80">📊 Exportar Excel</button>
+      <button class="btn" onclick="exportarPDF()" style="background:#450a0a;border-color:#7f1d1d;color:#fca5a5">📄 Exportar PDF</button>
+      <a href="painel-realtime.html" class="btn">← Voltar ao Painel</a>
+    </div>
   </div>
 
   <div class="turnos-grid" id="turnos-grid">
@@ -239,6 +246,259 @@ function toggleAero(key){
   const ar=document.getElementById(`aa-${key}`);
   if(openAeros.has(key)){openAeros.delete(key);el.classList.remove('open');ar.classList.remove('open');}
   else{openAeros.add(key);el.classList.add('open');ar.classList.add('open');}
+}
+
+// ═══════════════════════════════════════
+// EXPORTAR EXCEL
+// ═══════════════════════════════════════
+async function exportarExcel(){
+  const btn=event.target;
+  btn.textContent='⏳ Gerando...';btn.disabled=true;
+  try{
+    const{data,error}=await sb.from('turnos')
+      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .order('criado_em',{ascending:false});
+    if(error)throw error;
+
+    const wb=XLSX.utils.book_new();
+
+    // ── ABA 1: RESUMO GERAL ──
+    const resumoRows=[
+      ['HISTÓRICO DE TURNOS — WO PERNOITE'],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['Data','Encerrado em','Aeronaves','WOs Total','Concluídas','Pendentes','Findings','% Conclusão'],
+    ];
+    data.forEach(t=>{
+      const d=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+      const enc=t.encerrado_em?new Date(t.encerrado_em).toLocaleString('pt-BR'):'—';
+      resumoRows.push([d,enc,t.total_aero,t.total_wo,t.wo_concluidas,t.wo_pendentes,t.total_findings,(t.pct_conclusao||0)+'%']);
+    });
+    const wsResumo=XLSX.utils.aoa_to_sheet(resumoRows);
+    wsResumo['!cols']=[{wch:14},{wch:18},{wch:12},{wch:12},{wch:12},{wch:12},{wch:10},{wch:12}];
+    // Estilo do título
+    if(wsResumo['A1']) wsResumo['A1'].s={font:{bold:true,sz:14}};
+    XLSX.utils.book_append_sheet(wb,wsResumo,'Resumo Geral');
+
+    // ── ABA 2: DETALHE POR TURNO ──
+    const detalheRows=[
+      ['DETALHE POR TURNO — TODAS AS WOs E OBSERVAÇÕES'],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['DATA TURNO','ENCERRADO EM','AERONAVE','TÉCNICO','WO','DESCRIÇÃO','STATUS','MTL','FINDING','CONCLUÍDA EM','HORA OBS','OBSERVAÇÃO'],
+    ];
+    data.forEach(t=>{
+      const dTurno=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+      const encTurno=t.encerrado_em?new Date(t.encerrado_em).toLocaleString('pt-BR'):'—';
+      const aeros=t.turno_aeronaves||[];
+      aeros.forEach(a=>{
+        const tasks=a.turno_tarefas||[];
+        tasks.forEach(task=>{
+          const obs=(task.observacoes||[]);
+          const finds=(task.findings||[]).map(f=>(f.resolved?'[Resolvido] ':'')+f.description).join(' | ');
+          const concHora=task.concluida_em?new Date(task.concluida_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+          if(obs.length===0){
+            detalheRows.push([dTurno,encTurno,a.codigo,a.tecnico,task.wo_number,task.descricao,task.concluida?'Concluída':'Pendente',task.material||'',finds,concHora,'','']);
+          } else {
+            obs.forEach((o,i)=>{
+              detalheRows.push([
+                i===0?dTurno:'',
+                i===0?encTurno:'',
+                i===0?a.codigo:'',
+                i===0?a.tecnico:'',
+                i===0?task.wo_number:'',
+                i===0?task.descricao:'',
+                i===0?(task.concluida?'Concluída':'Pendente'):'',
+                i===0?(task.material||''):'',
+                i===0?finds:'',
+                i===0?concHora:'',
+                o.recorded_at||'',
+                o.text||''
+              ]);
+            });
+          }
+          detalheRows.push([]); // linha em branco entre tasks
+        });
+        detalheRows.push([]); // linha em branco entre aeronaves
+      });
+      detalheRows.push(['─'.repeat(20)]); // separador entre turnos
+      detalheRows.push([]);
+    });
+    const wsDetalhe=XLSX.utils.aoa_to_sheet(detalheRows);
+    wsDetalhe['!cols']=[{wch:14},{wch:18},{wch:10},{wch:22},{wch:10},{wch:45},{wch:12},{wch:6},{wch:30},{wch:12},{wch:8},{wch:50}];
+    XLSX.utils.book_append_sheet(wb,wsDetalhe,'Detalhe Completo');
+
+    // ── ABA 3: FINDINGS ──
+    const findRows=[
+      ['FINDINGS REGISTRADOS — TODOS OS TURNOS'],
+      [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+      [],
+      ['DATA TURNO','AERONAVE','TÉCNICO','WO','FINDING','STATUS'],
+    ];
+    data.forEach(t=>{
+      const dTurno=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+      (t.turno_aeronaves||[]).forEach(a=>{
+        (a.turno_tarefas||[]).forEach(task=>{
+          (task.findings||[]).forEach(f=>{
+            findRows.push([dTurno,a.codigo,a.tecnico,task.wo_number,f.description,f.resolved?'Resolvido':'Aberto']);
+          });
+        });
+      });
+    });
+    const wsFindings=XLSX.utils.aoa_to_sheet(findRows);
+    wsFindings['!cols']=[{wch:14},{wch:10},{wch:22},{wch:10},{wch:50},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,wsFindings,'Findings');
+
+    // Download
+    const hoje=new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb,`WO_Historico_${hoje}.xlsx`);
+    btn.textContent='📊 Exportar Excel';btn.disabled=false;
+  }catch(e){
+    alert('❌ Erro: '+e.message);
+    btn.textContent='📊 Exportar Excel';btn.disabled=false;
+  }
+}
+
+// ═══════════════════════════════════════
+// EXPORTAR PDF
+// ═══════════════════════════════════════
+async function exportarPDF(){
+  const btn=event.target;
+  btn.textContent='⏳ Gerando...';btn.disabled=true;
+  try{
+    const{data,error}=await sb.from('turnos')
+      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .order('criado_em',{ascending:false});
+    if(error)throw error;
+
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const W=doc.internal.pageSize.getWidth();
+    let y=15;
+
+    // Função helpers
+    const addPage=()=>{doc.addPage();y=15;};
+    const checkY=(h=10)=>{if(y+h>195)addPage();};
+
+    // CAPA
+    doc.setFillColor(30,58,138);
+    doc.rect(0,0,W,40,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(18);doc.setFont('helvetica','bold');
+    doc.text('HISTORICO DE TURNOS - WO PERNOITE',W/2,18,{align:'center'});
+    doc.setFontSize(10);doc.setFont('helvetica','normal');
+    doc.text('Sistema de Gestao de Ordens de Trabalho',W/2,26,{align:'center'});
+    doc.text('Gerado em: '+new Date().toLocaleString('pt-BR'),W/2,33,{align:'center'});
+    y=50;
+
+    // RESUMO GERAL
+    doc.setTextColor(30,58,138);
+    doc.setFontSize(13);doc.setFont('helvetica','bold');
+    doc.text('RESUMO GERAL',14,y);y+=6;
+
+    doc.autoTable({
+      startY:y,
+      head:[['Data','Encerrado em','Aeronaves','WOs','Concluidas','Pendentes','Findings','%']],
+      body:data.map(t=>[
+        t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—',
+        t.encerrado_em?new Date(t.encerrado_em).toLocaleString('pt-BR'):'—',
+        t.total_aero,t.total_wo,t.wo_concluidas,t.wo_pendentes,t.total_findings,(t.pct_conclusao||0)+'%'
+      ]),
+      styles:{fontSize:8,cellPadding:3},
+      headStyles:{fillColor:[30,58,138],textColor:255,fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[241,245,249]},
+      columnStyles:{7:{fontStyle:'bold'}},
+      margin:{left:14,right:14},
+    });
+    y=doc.lastAutoTable.finalY+12;
+
+    // DETALHE POR TURNO
+    data.forEach(t=>{
+      const dTurno=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+      const encTurno=t.encerrado_em?new Date(t.encerrado_em).toLocaleString('pt-BR'):'—';
+      const aeros=t.turno_aeronaves||[];
+
+      // Cabeçalho do turno
+      checkY(20);
+      doc.setFillColor(30,41,59);
+      doc.rect(14,y,W-28,8,'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(10);doc.setFont('helvetica','bold');
+      doc.text('TURNO: '+dTurno+' | Encerrado: '+encTurno,16,y+5.5);
+      doc.setFontSize(8);doc.setFont('helvetica','normal');
+      doc.text(t.wo_concluidas+'/'+t.total_wo+' WOs ('+t.pct_conclusao+'%) | '+t.total_findings+' findings',W-16,y+5.5,{align:'right'});
+      y+=12;
+
+      aeros.forEach(a=>{
+        const tasks=a.turno_tarefas||[];
+        checkY(15);
+
+        // Header aeronave
+        doc.setFillColor(22,32,50);
+        doc.rect(14,y,W-28,7,'F');
+        doc.setTextColor(147,197,253);
+        doc.setFontSize(9);doc.setFont('helvetica','bold');
+        doc.text(a.codigo+' — '+a.tecnico,16,y+5);
+        doc.setTextColor(148,163,184);
+        doc.text(a.wo_concluidas+'/'+a.wo_total+' WOs | '+a.pct_conclusao+'%'+(a.tem_finding?' | ⚠ Finding':''),W-16,y+5,{align:'right'});
+        y+=10;
+
+        // Tabela de WOs
+        const rows=[];
+        tasks.forEach(task=>{
+          const obs=(task.observacoes||[]);
+          const finds=(task.findings||[]).map(f=>(f.resolved?'[OK] ':'')+f.description).join('
+');
+          const obsText=obs.map(o=>`${o.recorded_at||''} ${o.text||''}`).join('
+');
+          rows.push([
+            task.wo_number||'',
+            (task.descricao||'').substring(0,60)+(task.descricao?.length>60?'...':''),
+            task.concluida?'Concluida':'Pendente',
+            task.material||'—',
+            finds||'—',
+            obsText||'—'
+          ]);
+        });
+
+        if(rows.length){
+          doc.autoTable({
+            startY:y,
+            head:[['WO','Descricao','Status','MTL','Findings','Observacoes (hora - texto)']],
+            body:rows,
+            styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
+            headStyles:{fillColor:[51,65,85],textColor:255,fontSize:7},
+            columnStyles:{
+              0:{cellWidth:18},
+              1:{cellWidth:60},
+              2:{cellWidth:18},
+              3:{cellWidth:10},
+              4:{cellWidth:35},
+              5:{cellWidth:W-28-141}
+            },
+            margin:{left:14,right:14},
+            didParseCell:(data)=>{
+              if(data.column.index===2&&data.cell.raw==='Concluida'){
+                data.cell.styles.textColor=[74,222,128];data.cell.styles.fontStyle='bold';
+              }
+              if(data.column.index===2&&data.cell.raw==='Pendente'){
+                data.cell.styles.textColor=[251,191,36];
+              }
+            }
+          });
+          y=doc.lastAutoTable.finalY+6;
+        }
+      });
+      y+=6;
+    });
+
+    const hoje=new Date().toISOString().split('T')[0];
+    doc.save('WO_Historico_'+hoje+'.pdf');
+    btn.textContent='📄 Exportar PDF';btn.disabled=false;
+  }catch(e){
+    alert('Erro ao gerar PDF: '+e.message);
+    btn.textContent='📄 Exportar PDF';btn.disabled=false;
+  }
 }
 
 load();
