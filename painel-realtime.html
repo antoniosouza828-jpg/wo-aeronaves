@@ -304,7 +304,14 @@ async function importar(ev) {
         if (!wo) return;
 
         if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
-        map[col0].tasks.push({wo_number: wo, description: desc});
+        // Prioridade está em col[3] (IMPRET, ALTA, BORO, etc.)
+        const prioridade = String(row[3]||'').trim();
+        // Task code pode estar em col[2] e descrição completa em col[2] mesmo
+        // Montar descrição completa: [PRIORIDADE] descrição
+        const descCompleta = prioridade && prioridade !== desc
+          ? '[' + prioridade + '] ' + desc
+          : desc;
+        map[col0].tasks.push({wo_number: wo, description: descCompleta});
       });
       for (const ac of Object.values(map)) {
         const {data:ins} = await sb.from('aircrafts')
