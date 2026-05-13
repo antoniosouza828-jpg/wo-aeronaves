@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestores — WO Pernoite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.page{max-width:1600px;margin:0 auto;padding:1.5rem}
+
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.logo{font-size:22px;font-weight:500;color:#f8fafc}
+.logo span{color:#3b82f6}
+.header-sub{font-size:12px;color:#475569;margin-top:3px}
+.nav{display:flex;gap:8px}
+.nav a{padding:7px 16px;border-radius:8px;border:0.5px solid #334155;background:#1e293b;color:#94a3b8;font-size:12px;cursor:pointer;text-decoration:none;font-weight:500}
+.nav a:hover{background:#263348;color:#e2e8f0}
+.conn{display:flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8;background:#1e293b;padding:5px 12px;border-radius:20px}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:#10b981}
+.conn-dot.on{animation:blink 2s infinite}
+.conn-dot.off{background:#ef4444;animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem}
+.kpi{background:#1e293b;border-radius:12px;padding:16px 18px;border:0.5px solid #334155;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.kpi.azul::before{background:#3b82f6}
+.kpi.verde::before{background:#10b981}
+.kpi.amarelo::before{background:#fbbf24}
+.kpi.roxo::before{background:#a78bfa}
+.kpi.vermelho::before{background:#f87171}
+.kpi-n{font-size:32px;font-weight:600;color:#f8fafc;line-height:1}
+.kpi-l{font-size:11px;color:#64748b;margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
+.kpi-trend{font-size:11px;margin-top:4px}
+.kpi-trend.up{color:#4ade80}
+.kpi-trend.down{color:#f87171}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:#1e293b;border-radius:12px;border:0.5px solid #334155;padding:18px}
+.card-title{font-size:13px;font-weight:500;color:#94a3b8;margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+
+/* TURNO ATUAL */
+.turno-status{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.status-dot{width:10px;height:10px;border-radius:50%}
+.status-dot.ativo{background:#10b981;animation:blink 2s infinite}
+.status-dot.vazio{background:#334155}
+.status-txt{font-size:13px;font-weight:500}
+
+/* AERONAVES */
+.ac-list{display:flex;flex-direction:column;gap:6px}
+.ac-item{display:grid;grid-template-columns:100px 1fr 60px 50px 60px;gap:10px;align-items:center;padding:8px 10px;background:#0f172a;border-radius:8px}
+.ac-code{font-size:13px;font-weight:500;color:#93c5fd}
+.ac-tech{font-size:11px;color:#64748b}
+.prog-wrap{display:flex;align-items:center;gap:8px}
+.prog-bar{flex:1;height:5px;background:#1e293b;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s}
+.prog-txt{font-size:11px;color:#94a3b8;min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:500;white-space:nowrap}
+.b-done{background:#052e16;color:#4ade80}
+.b-started{background:#422006;color:#fbbf24}
+.b-pending{background:#1e293b;color:#475569;border:0.5px solid #334155}
+.b-finding{background:#450a0a;color:#f87171;animation:blink 1.5s infinite}
+.mtl-ok{background:#052e16;color:#4ade80;padding:2px 6px;border-radius:6px;font-size:9px;font-weight:500}
+.mtl-nhe{background:#422006;color:#fbbf24;padding:2px 6px;border-radius:6px;font-size:9px;font-weight:500}
+.mtl-tst{background:#3b0764;color:#d8b4fe;padding:2px 6px;border-radius:6px;font-size:9px;font-weight:500}
+
+/* HISTÓRICO CARDS */
+.hist-list{display:flex;flex-direction:column;gap:8px}
+.hist-item{padding:10px 12px;background:#0f172a;border-radius:8px;border-left:3px solid #334155}
+.hist-item.bom{border-left-color:#10b981}
+.hist-item.medio{border-left-color:#fbbf24}
+.hist-item.ruim{border-left-color:#f87171}
+.hist-date{font-size:11px;font-weight:500;color:#e2e8f0}
+.hist-meta{font-size:10px;color:#64748b;margin-top:2px}
+.hist-pct{font-size:18px;font-weight:600;float:right}
+.hist-pct.bom{color:#4ade80}
+.hist-pct.medio{color:#fbbf24}
+.hist-pct.ruim{color:#f87171}
+
+/* FINDINGS ATIVOS */
+.find-list{display:flex;flex-direction:column;gap:6px}
+.find-item{padding:8px 10px;background:#1a0a0a;border-radius:8px;border-left:3px solid #f87171}
+.find-ac{font-size:12px;font-weight:500;color:#f87171}
+.find-wo{font-size:10px;color:#94a3b8;margin-top:1px}
+.find-desc{font-size:11px;color:#fca5a5;margin-top:3px}
+
+/* TÉCNICOS */
+.tec-list{display:flex;flex-direction:column;gap:6px}
+.tec-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#0f172a;border-radius:8px}
+.tec-name{font-size:12px;color:#e2e8f0;flex:1}
+.tec-ac{font-size:10px;color:#64748b}
+.tec-prog{font-size:12px;font-weight:500;color:#4ade80}
+
+/* CHART */
+.chart-wrap{position:relative;height:160px}
+
+/* EMPTY/LOADING */
+.loading{text-align:center;padding:2rem;color:#475569;font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto .75rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{font-size:12px;color:#475569;text-align:center;padding:1.5rem}
+
+/* CLOCK */
+.clock{font-size:28px;font-weight:300;color:#f8fafc;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.clock-date{font-size:12px;color:#475569;margin-top:2px}
+
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="logo">✈ WO Pernoite <span>/ Gestores</span></div>
+      <div class="header-sub">Visão consolidada do turno em tempo real</div>
+    </div>
+    <div class="nav">
+      <a href="painel-realtime.html">📺 Painel TV</a>
+      <a href="historico.html">📋 Histórico</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div>
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="clock-date" id="clock-date">--/--/----</div>
+      </div>
+      <div class="conn">
+        <div class="conn-dot off" id="cdot"></div>
+        <span id="clabel">Conectando...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi azul"><div class="kpi-n" id="k-ac">—</div><div class="kpi-l">Aeronaves no turno</div></div>
+    <div class="kpi verde"><div class="kpi-n" id="k-pct">—</div><div class="kpi-l">% Conclusão geral</div></div>
+    <div class="kpi amarelo"><div class="kpi-n" id="k-and">—</div><div class="kpi-l">WOs em andamento</div></div>
+    <div class="kpi roxo"><div class="kpi-n" id="k-pend">—</div><div class="kpi-l">WOs pendentes</div></div>
+    <div class="kpi vermelho"><div class="kpi-n" id="k-find">—</div><div class="kpi-l">Findings ativos</div></div>
+  </div>
+
+  <!-- LINHA 1: TURNO ATUAL + TÉCNICOS + FINDINGS -->
+  <div class="grid-3">
+
+    <!-- TURNO ATUAL -->
+    <div class="card" style="grid-column:span 2">
+      <div class="card-title">
+        Aeronaves do Turno Atual
+        <span id="turno-resumo" style="font-size:11px;color:#64748b;font-weight:normal;text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div id="ac-list" class="ac-list">
+        <div class="loading"><div class="spinner"></div>Carregando...</div>
+      </div>
+    </div>
+
+    <!-- FINDINGS ATIVOS -->
+    <div class="card">
+      <div class="card-title">⚠ Findings Ativos</div>
+      <div id="find-list" class="find-list">
+        <div class="empty">Sem findings ativos</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LINHA 2: GRÁFICO + HISTÓRICO + TÉCNICOS -->
+  <div class="grid-3">
+
+    <!-- GRÁFICO DE PROGRESSO -->
+    <div class="card">
+      <div class="card-title">Progresso por Aeronave</div>
+      <div class="chart-wrap">
+        <canvas id="chart-prog"></canvas>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO RECENTE -->
+    <div class="card">
+      <div class="card-title">Últimos 5 Turnos</div>
+      <div id="hist-list" class="hist-list">
+        <div class="empty">Sem histórico ainda</div>
+      </div>
+    </div>
+
+    <!-- TÉCNICOS DO TURNO -->
+    <div class="card">
+      <div class="card-title">Técnicos no Turno</div>
+      <div id="tec-list" class="tec-list">
+        <div class="empty">Sem dados</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const URL_='https://owyohcqjyiqhabonnstq.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
+const sb=window.supabase.createClient(URL_,KEY);
+let chartProg=null;
+
+// RELÓGIO
+function atualizarRelogio(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('pt-BR');
+  document.getElementById('clock-date').textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+}
+setInterval(atualizarRelogio,1000);
+atualizarRelogio();
+
+function setConn(on){
+  document.getElementById('cdot').className=`conn-dot ${on?'on':'off'}`;
+  document.getElementById('clabel').textContent=on?'Tempo real ✓':'Desconectado';
+}
+
+// CARREGAR TURNO ATUAL
+async function loadTurno(){
+  try{
+    const{data,error}=await sb.from('aircrafts')
+      .select('*,tasks(*,findings(*))').order('code');
+    if(error)throw error;
+    renderTurno(data||[]);
+    setConn(true);
+  }catch(e){setConn(false);}
+}
+
+function renderTurno(data){
+  // KPIs
+  let tWO=0,dWO=0,sWO=0,fAtivos=0;
+  data.forEach(ac=>{
+    const tasks=ac.tasks||[];
+    tWO+=tasks.length;
+    dWO+=tasks.filter(t=>t.completed).length;
+    sWO+=tasks.filter(t=>t.started&&!t.completed).length;
+    fAtivos+=tasks.filter(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved)).length;
+  });
+  const pct=tWO?Math.round(dWO/tWO*100):0;
+  const pend=tWO-dWO-sWO;
+
+  document.getElementById('k-ac').textContent=data.length||'—';
+  document.getElementById('k-pct').textContent=tWO?(pct+'%'):'—';
+  document.getElementById('k-and').textContent=tWO?sWO:'—';
+  document.getElementById('k-pend').textContent=tWO?pend:'—';
+  document.getElementById('k-find').textContent=tWO?fAtivos:'—';
+  document.getElementById('turno-resumo').textContent=tWO?`${dWO}/${tWO} WOs concluídas`:'';
+
+  // Lista de aeronaves
+  const acList=document.getElementById('ac-list');
+  if(!data.length){
+    acList.innerHTML='<div class="empty">Nenhuma aeronave no turno atual.<br>Importe uma planilha no Painel TV.</div>';
+  } else {
+    acList.innerHTML=data.map(ac=>{
+      const tasks=ac.tasks||[];
+      const done=tasks.filter(t=>t.completed).length;
+      const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
+      const started=tasks.filter(t=>t.started&&!t.completed).length;
+      const p=tasks.length?Math.round(done/tasks.length*100):0;
+      const mo=['TST','NHE','OK',null];
+      const mv=tasks.map(t=>t.material);
+      let mb=null;for(const m of mo){if(mv.includes(m)){mb=m;break;}}
+      const mtlB=mb==='OK'?'<span class="mtl-ok">OK</span>':mb==='NHE'?'<span class="mtl-nhe">NHE</span>':mb==='TST'?'<span class="mtl-tst">TST</span>':'<span style="font-size:10px;color:#334155">—</span>';
+      const cor=p===100?'#10b981':p>50?'#fbbf24':'#3b82f6';
+      let badge=hasFind?'<span class="badge b-finding">⚠ Finding</span>':p===100?'<span class="badge b-done">✓ Concluída</span>':started>0?'<span class="badge b-started">▶ Andamento</span>':'<span class="badge b-pending">Aguardando</span>';
+      return `<div class="ac-item">
+        <div><div class="ac-code">${ac.code}</div><div class="ac-tech">${ac.technician||'—'}</div></div>
+        <div class="prog-wrap">
+          <div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${cor}"></div></div>
+          <div class="prog-txt">${p}%</div>
+        </div>
+        ${badge}
+        ${mtlB}
+        <div style="font-size:10px;color:#64748b;text-align:right">${done}/${tasks.length}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Findings ativos
+  const findList=document.getElementById('find-list');
+  const finds=[];
+  data.forEach(ac=>{
+    (ac.tasks||[]).forEach(t=>{
+      if(t.has_finding||(t.findings||[]).some(f=>!f.resolved)){
+        const fs=(t.findings||[]).filter(f=>!f.resolved);
+        finds.push({ac:ac.code,wo:t.wo_number,desc:fs.map(f=>f.description).join(' / ')||'Finding registrado'});
+      }
+    });
+  });
+  findList.innerHTML=finds.length
+    ?finds.map(f=>`<div class="find-item">
+        <div class="find-ac">✈ ${f.ac}</div>
+        <div class="find-wo">WO ${f.wo}</div>
+        <div class="find-desc">${f.desc}</div>
+      </div>`).join('')
+    :'<div class="empty">✅ Nenhum finding ativo</div>';
+
+  // Técnicos
+  const tecs={};
+  data.forEach(ac=>{
+    const tech=ac.technician||'Não atribuído';
+    if(!tecs[tech])tecs[tech]={aeros:[],done:0,total:0};
+    tecs[tech].aeros.push(ac.code);
+    const tasks=ac.tasks||[];
+    tecs[tech].total+=tasks.length;
+    tecs[tech].done+=tasks.filter(t=>t.completed).length;
+  });
+  const tecList=document.getElementById('tec-list');
+  const tecArr=Object.entries(tecs);
+  tecList.innerHTML=tecArr.length
+    ?tecArr.map(([name,d])=>{
+      const p=d.total?Math.round(d.done/d.total*100):0;
+      return `<div class="tec-item">
+        <div><div class="tec-name">👤 ${name}</div><div class="tec-ac">${d.aeros.join(', ')}</div></div>
+        <div class="tec-prog">${p}%</div>
+      </div>`;
+    }).join('')
+    :'<div class="empty">Sem técnicos</div>';
+
+  // Gráfico
+  renderGrafico(data);
+}
+
+function renderGrafico(data){
+  const labels=data.map(ac=>ac.code);
+  const valores=data.map(ac=>{
+    const tasks=ac.tasks||[];
+    return tasks.length?Math.round(tasks.filter(t=>t.completed).length/tasks.length*100):0;
+  });
+  const cores=valores.map(v=>v===100?'#10b981':v>50?'#fbbf24':'#3b82f6');
+
+  if(chartProg){chartProg.destroy();}
+  const ctx=document.getElementById('chart-prog').getContext('2d');
+  chartProg=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{data:valores,backgroundColor:cores,borderRadius:4,borderSkipped:false}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{min:0,max:100,ticks:{color:'#475569',font:{size:9},callback:v=>v+'%'},grid:{color:'#1e293b'}},
+        x:{ticks:{color:'#94a3b8',font:{size:9}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+// HISTÓRICO
+async function loadHistorico(){
+  try{
+    const{data}=await sb.from('turnos')
+      .select('data_turno,encerrado_em,total_wo,wo_concluidas,pct_conclusao,total_findings')
+      .order('criado_em',{ascending:false}).limit(5);
+    const list=document.getElementById('hist-list');
+    if(!data?.length){list.innerHTML='<div class="empty">Sem histórico ainda</div>';return;}
+    list.innerHTML=data.map(t=>{
+      const p=t.pct_conclusao||0;
+      const cls=p>=80?'bom':p>=50?'medio':'ruim';
+      const d=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}):'—';
+      const enc=t.encerrado_em?new Date(t.encerrado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+      return `<div class="hist-item ${cls}">
+        <span class="hist-pct ${cls}">${p}%</span>
+        <div class="hist-date">${d} ${enc?'· enc. '+enc:''}</div>
+        <div class="hist-meta">${t.wo_concluidas}/${t.total_wo} WOs · ${t.total_findings} finding${t.total_findings!==1?'s':''}</div>
+      </div>`;
+    }).join('');
+  }catch(e){}
+}
+
+// REALTIME
+sb.channel('gestores-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},loadTurno)
+  .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'},loadTurno)
+  .on('postgres_changes',{event:'*',schema:'public',table:'findings'},loadTurno)
+  .on('postgres_changes',{event:'*',schema:'public',table:'turnos'},loadHistorico)
+  .subscribe(s=>setConn(s==='SUBSCRIBED'));
+
+loadTurno();
+loadHistorico();
+</script>
+</body>
+</html>
