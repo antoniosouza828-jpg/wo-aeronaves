@@ -410,7 +410,28 @@ async function exportar(){
 
 async function encerrarTurno(confirmado=false){
   if(!confirmado){
-    if(!confirm('⏹ Encerrar o turno atual?\n\nTodos os dados serão salvos no histórico e o painel será limpo para o próximo turno.'))return;
+    // Verificar WOs ainda abertas
+    const{data:aeros}=await sb.from('aircrafts')
+      .select('code,tasks(id,wo_number,completed)');
+    
+    const abertas=[];
+    (aeros||[]).forEach(ac=>{
+      (ac.tasks||[]).forEach(t=>{
+        if(!t.completed) abertas.push(`${ac.code} — WO ${t.wo_number}`);
+      });
+    });
+
+    if(abertas.length>0){
+      const lista=abertas.slice(0,8).join('\n')+(abertas.length>8?`\n... e mais ${abertas.length-8} WO(s)`:'');
+      const forcar=confirm(
+        `⚠️ ATENÇÃO — Existem ${abertas.length} WO(s) ainda não concluída(s):\n\n${lista}\n\n`+
+        `Deseja encerrar o turno mesmo assim?\n`+
+        `(As WOs pendentes serão salvas no histórico como "Pendente")`
+      );
+      if(!forcar) return;
+    } else {
+      if(!confirm('✅ Todas as WOs estão concluídas!\n\nEncerrar o turno e salvar no histórico?'))return;
+    }
   }
   await salvarTurno();
 }
