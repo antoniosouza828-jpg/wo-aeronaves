@@ -118,6 +118,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .empty{text-align:center;padding:4rem;color:#475569}
 
 @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
+
+/* PIN MODAL */
+.pin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+.pin-overlay.show{display:flex}
+.pin-box{background:#1e293b;border-radius:16px;padding:2rem;width:320px;border:0.5px solid #334155;text-align:center}
+.pin-title{font-size:16px;font-weight:500;color:#f8fafc;margin-bottom:6px}
+.pin-sub{font-size:12px;color:#64748b;margin-bottom:1.5rem}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:1.5rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #334155;background:transparent;transition:all .15s}
+.pin-dot.filled{background:#3b82f6;border-color:#3b82f6}
+.pin-dot.error{background:#f87171;border-color:#f87171}
+.pin-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pin-key{padding:14px;background:#0f172a;border:0.5px solid #334155;border-radius:10px;font-size:18px;font-weight:500;color:#e2e8f0;cursor:pointer;transition:all .15s}
+.pin-key:hover{background:#1e293b;color:#fff}
+.pin-key.del{font-size:13px;color:#64748b}
+.pin-cancel{margin-top:12px;font-size:12px;color:#475569;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -129,12 +145,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     </div>
     <div class="header-right">
       <div class="controls">
-        <button class="btn primary" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
+        <button class="btn primary" onclick="verificarPin(()=>document.getElementById('fileInput').click())">📥 Importar Excel</button>
         <button class="btn" onclick="exportar()">📤 Exportar</button>
         <button class="btn" onclick="window.open('historico.html','_blank')" style="background:#1e293b;border-color:#334155">📋 Histórico</button>
         <button class="btn" id="btn-som" onclick="toggleSom()" style="background:#1e293b;border-color:#334155">🔔 Som ON</button>
-        <button class="btn" onclick="encerrarTurno()" style="background:#422006;border-color:#92400e;color:#fbbf24">⏹ Encerrar Turno</button>
-        <button class="btn danger" onclick="limpar()">🗑 Limpar</button>
+        <button class="btn" onclick="verificarPin(()=>encerrarTurno())" style="background:#422006;border-color:#92400e;color:#fbbf24">⏹ Encerrar Turno</button>
+        <button class="btn danger" onclick="verificarPin(()=>limpar())">🗑 Limpar</button>
       </div>
       <div class="conn">
         <div class="conn-dot off" id="cdot"></div>
@@ -563,6 +579,62 @@ async function limpar(){
 }
 
 // ═══════════════════════════════════════
+// PIN DE ACESSO
+// ═══════════════════════════════════════
+const PIN_CORRETO = '0526';
+let pinAtual = '';
+let pinCallback = null;
+let pinAutorizado = false; // sessão autorizada por 30min
+let pinExpiresAt = 0;
+
+function verificarPin(cb){
+  // Se já autorizou e não expirou, executar direto
+  if(pinAutorizado && Date.now() < pinExpiresAt){ cb(); return; }
+  pinCallback = cb;
+  pinAtual = '';
+  atualizarDots();
+  document.getElementById('pin-sub').textContent = 'Digite o PIN para continuar';
+  document.querySelectorAll('.pin-dot').forEach(d=>d.classList.remove('error'));
+  document.getElementById('pin-overlay').classList.add('show');
+}
+
+function pinKey(k){
+  if(k==='cancel'){ fecharPin(); return; }
+  if(k==='del'){ pinAtual=pinAtual.slice(0,-1); atualizarDots(); return; }
+  if(pinAtual.length>=4) return;
+  pinAtual+=k;
+  atualizarDots();
+  if(pinAtual.length===4){
+    if(pinAtual===PIN_CORRETO){
+      pinAutorizado=true;
+      pinExpiresAt=Date.now()+30*60*1000; // 30 minutos
+      fecharPin();
+      if(pinCallback){ pinCallback(); pinCallback=null; }
+    } else {
+      document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('error'));
+      document.getElementById('pin-sub').textContent='PIN incorreto. Tente novamente.';
+      setTimeout(()=>{
+        pinAtual='';
+        atualizarDots();
+        document.querySelectorAll('.pin-dot').forEach(d=>d.classList.remove('error'));
+        document.getElementById('pin-sub').textContent='Digite o PIN para continuar';
+      },1000);
+    }
+  }
+}
+
+function atualizarDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById(`pd${i}`).classList.toggle('filled', i<pinAtual.length);
+  }
+}
+
+function fecharPin(){
+  document.getElementById('pin-overlay').classList.remove('show');
+  pinAtual='';
+}
+
+// ═══════════════════════════════════════
 // NOTIFICAÇÃO SONORA — FINDINGS
 // ═══════════════════════════════════════
 let somAtivo = true;
@@ -626,9 +698,48 @@ sb.channel('painel-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'},load)
   .on('postgres_changes',{event:'*',schema:'public',table:'findings'},load)
   .on('postgres_changes',{event:'*',schema:'public',table:'observations'},load)
-  .subscribe(s=>setConn(s==='SUBSCRIBED'));
+  .subscribe(s=>{
+    setConn(s==='SUBSCRIBED');
+    if(s==='SUBSCRIBED') console.log('Realtime conectado');
+  });
+
+// Polling de fallback a cada 15s para garantir atualização
+setInterval(load, 15000);
+
+// Reconectar se ficar offline
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible') load();
+});
 
 load();
 </script>
+
+<!-- PIN MODAL -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <div class="pin-title">🔒 Acesso Restrito</div>
+    <div class="pin-sub" id="pin-sub">Digite o PIN para continuar</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-keys">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key del" onclick="pinKey('del')">⌫</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinKey('cancel')">✕</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
