@@ -164,7 +164,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
       <thead>
         <tr>
           <th style="min-width:150px">Aeronave</th>
-          <th>WOs</th>
+          <th>Tarefas / WOs</th>
           <th>Tarefas</th>
           <th style="min-width:120px">Progresso</th>
           <th>MTL</th>
@@ -222,7 +222,9 @@ function render(data){
     if(hasFind)fAC++;
 
     const pct=tasks.length?Math.round(done/tasks.length*100):0;
-    const woNames=tasks.map(t=>t.wo_number).join(' · ');
+    // WOs únicas (sem repetição)
+    const wosUnicas=[...new Set(tasks.map(t=>t.wo_number))];
+    const woNames=wosUnicas.join(' · ');
 
     const mo=['TST','NHE','OK',null];
     const mv=tasks.map(t=>t.material);
@@ -238,44 +240,61 @@ function render(data){
     const isOpen=openPanels.has(ac.id);
 
     // ---- DETALHE DAS TASKS ----
-    const detailHtml=tasks.map(task=>{
-      const tFind=task.has_finding||(task.findings||[]).some(f=>!f.resolved);
-      const tDone=task.completed;
-      const tStarted=task.started&&!tDone;
-      const obs=(task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
-      const finds=(task.findings||[]);
-      const tMtl=task.material;
+    // Agrupar tarefas por WO number
+    const woGrupos={};
+    tasks.forEach(task=>{
+      if(!woGrupos[task.wo_number]) woGrupos[task.wo_number]=[];
+      woGrupos[task.wo_number].push(task);
+    });
 
-      const tSt=tDone?`<span class="badge b-done" style="font-size:9px;padding:2px 7px">✓ Concluída</span>`:tFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`:tStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
-      const tMb=tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
+    const detailHtml=Object.entries(woGrupos).map(([woNum, woTasks])=>{
+      // Status geral do grupo: concluído só se todas concluídas
+      const todoConcluido=woTasks.every(t=>t.completed);
+      const algumFind=woTasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
+      const algumStarted=woTasks.some(t=>t.started&&!t.completed);
+      const doneCnt=woTasks.filter(t=>t.completed).length;
 
-      const findHtml=finds.map(f=>`<div class="finding-item ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
+      const woSt=todoConcluido?`<span class="badge b-done" style="font-size:9px;padding:2px 7px">✓ Concluída</span>`:algumFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`:algumStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
 
-      const obsHtml=obs.length
-        ?obs.map(o=>`<div class="obs-entry">
-            <div class="obs-time">${o.recorded_at||'--:--'}</div>
-            <div class="obs-text ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div>
-          </div>`).join('')
-        :`<div class="obs-empty">Nenhuma observação ainda</div>`;
-
-      return `<div class="task-item" style="background:${tFind?'#180808':'transparent'}">
-        <div class="task-header">
-          <span class="task-wo-num">WO ${task.wo_number}</span>
-          ${tSt} ${tMb}
-        </div>
-        <div class="task-desc">${task.description||'—'}</div>
-        ${findHtml?`<div style="margin-bottom:6px">${findHtml}</div>`:''}
-        <div class="obs-area">
-          <div class="obs-label">Observações</div>
-          <div class="obs-list">${obsHtml}</div>
-          <div class="obs-input-wrap">
-            <input class="obs-input" id="obs-inp-${task.id}" placeholder="Líder: adicionar observação..." 
-              onkeydown="if(event.key==='Enter')enviarObs('${task.id}')"/>
-            <button class="obs-send" onclick="enviarObs('${task.id}')">Enviar</button>
+      // Listar cada sub-tarefa com obs
+      const subTarefas=woTasks.map(task=>{
+        const obs=(task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
+        const finds=(task.findings||[]);
+        const tDone=task.completed;
+        const tFind=task.has_finding||(finds).some(f=>!f.resolved);
+        const tMtl=task.material;
+        const tMb=tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
+        const tSt=tDone?`<span style="font-size:9px;color:#4ade80">✓</span>`:tFind?`<span style="font-size:9px;color:#f87171">⚠</span>`:task.started?`<span style="font-size:9px;color:#fbbf24">▶</span>`:`<span style="font-size:9px;color:#475569">○</span>`;
+        const findHtml=finds.map(f=>`<div class="finding-item ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
+        const obsHtml=obs.length?obs.map(o=>`<div class="obs-entry"><div class="obs-time">${o.recorded_at||'--:--'}</div><div class="obs-text ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div></div>`).join(''):`<div class="obs-empty">Sem observações</div>`;
+        return `<div style="padding:8px 0 8px 12px;border-left:2px solid ${tDone?'#10b981':tFind?'#f87171':'#334155'};margin:6px 0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            ${tSt} <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
           </div>
+          ${findHtml?`<div style="margin-bottom:4px">${findHtml}</div>`:''}
+          <div class="obs-area">
+            <div class="obs-label">Observações</div>
+            <div class="obs-list">${obsHtml}</div>
+            <div class="obs-input-wrap">
+              <input class="obs-input" id="obs-inp-${task.id}" placeholder="Líder: adicionar observação..."
+                onkeydown="if(event.key==='Enter')enviarObs('${task.id}')"/>
+              <button class="obs-send" onclick="enviarObs('${task.id}')">Enviar</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div class="task-item" style="background:${algumFind?'#180808':'transparent'}">
+        <div class="task-header">
+          <span class="task-wo-num">WO ${woNum}</span>
+          ${woSt}
+          <span style="font-size:10px;color:#475569">${doneCnt}/${woTasks.length} tarefa${woTasks.length!==1?'s':''}</span>
         </div>
+        ${subTarefas}
       </div>`;
     }).join('');
+
+
 
     return `
     <tr class="ac-row ${hasFind?'finding':''}" onclick="toggleDetail('${ac.id}')">
@@ -288,7 +307,10 @@ function render(data){
           </div>
         </div>
       </td>
-      <td><div class="wo-count">${done}/${tasks.length}</div></td>
+      <td>
+        <div class="wo-count">${done}/${tasks.length}</div>
+        <div style="font-size:10px;color:#475569;margin-top:2px">${wosUnicas.length} WO${wosUnicas.length!==1?'s':''}</div>
+      </td>
       <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
       <td>
         <div class="prog-cell">
