@@ -15,7 +15,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem}
 .header-left h1{font-size:22px;font-weight:500;color:#f8fafc}
 .header-left p{font-size:12px;color:#475569;margin-top:3px}
-.header-right{display:flex;align-items:center;gap:12px}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .conn{display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;background:#1e293b;padding:6px 14px;border-radius:20px}
 .conn-dot{width:7px;height:7px;border-radius:50%;background:#10b981}
 .conn-dot.on{animation:blink 2s infinite}
@@ -30,19 +30,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .kpi.red .kpi-n{color:#f87171}
 .kpi.red{border-color:#450a0a}
 
-/* CONTROLS */
-.controls{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
-.btn{padding:8px 18px;border-radius:8px;border:0.5px solid #334155;background:#1e293b;color:#94a3b8;font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
-.btn:hover{background:#263348;color:#e2e8f0}
-.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
-.btn.primary:hover{background:#2563eb}
-.btn.danger{background:#450a0a;border-color:#7f1d1d;color:#fca5a5}
-#fileInput{display:none}
-
 /* SUMMARY */
 .summary{display:flex;gap:1.5rem;margin-bottom:1.25rem;padding:10px 16px;background:#1e293b;border-radius:8px;border:0.5px solid #334155;flex-wrap:wrap}
 .sum-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8}
 .sum-dot{width:8px;height:8px;border-radius:50%}
+
+/* CONTROLS */
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 18px;border-radius:8px;border:0.5px solid #334155;background:#1e293b;color:#94a3b8;font-size:13px;cursor:pointer;font-weight:500}
+.btn:hover{background:#263348;color:#e2e8f0}
+.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.btn.danger{background:#450a0a;border-color:#7f1d1d;color:#fca5a5}
+#fileInput{display:none}
 
 /* TABLE */
 .tbl-wrap{background:#1e293b;border-radius:12px;border:0.5px solid #334155;overflow:hidden}
@@ -50,15 +49,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .tbl th{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;font-weight:500;border-bottom:0.5px solid #334155;background:#162032}
 .tbl td{padding:9px 14px;border-bottom:0.5px solid #1e293b;vertical-align:middle}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:#162032}
-.tbl tr.finding td{background:#1a0a0a}
-.tbl tr.finding:hover td{background:#200d0d}
 
-/* CELLS */
+/* LINHA AERONAVE */
+.ac-row{cursor:pointer;transition:background .1s}
+.ac-row:hover td{background:#162032}
+.ac-row.finding td{background:#1a0a0a}
+.ac-row.finding:hover td{background:#200d0d}
+.arrow{font-size:10px;color:#475569;display:inline-block;transition:transform .25s;margin-right:6px}
+.arrow.open{transform:rotate(90deg)}
 .ac-code{font-weight:500;font-size:14px;color:#93c5fd;letter-spacing:.5px}
 .ac-tech{font-size:11px;color:#64748b;margin-top:2px}
 .wo-count{font-size:12px;color:#94a3b8}
-.wo-list{font-size:11px;color:#64748b;margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wo-list{font-size:11px;color:#64748b;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prog-cell{display:flex;align-items:center;gap:8px}
 .prog-bar{width:70px;height:4px;background:#0f172a;border-radius:2px;overflow:hidden}
 .prog-fill{height:100%;background:#10b981;transition:width .4s}
@@ -76,6 +78,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .mtl-tst{background:#3b0764;color:#d8b4fe}
 .mtl-nd{background:#1e293b;color:#334155;border:0.5px solid #334155}
 
+/* DETALHE */
+.detail-row td{padding:0;border-bottom:0.5px solid #334155}
+.detail-inner{padding:0 14px 0 36px}
+.task-item{border-bottom:0.5px solid #1e293b;padding:10px 0}
+.task-item:last-child{border-bottom:none}
+.task-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.task-wo-num{font-size:12px;font-weight:500;color:#e2e8f0}
+.task-desc{font-size:11px;color:#64748b;margin-bottom:8px;line-height:1.4}
+.finding-item{font-size:11px;padding:3px 0}
+.finding-item.open{color:#f87171}
+.finding-item.resolved{color:#4ade80}
+
+/* OBSERVAÇÕES */
+.obs-area{margin-top:6px}
+.obs-label{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.obs-list{display:flex;flex-direction:column;gap:0}
+.obs-entry{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:5px 0;border-bottom:0.5px solid #1e293b;align-items:start}
+.obs-entry:last-child{border-bottom:none}
+.obs-time{font-size:10px;font-weight:500;color:#475569;font-variant-numeric:tabular-nums;padding-top:1px}
+.obs-text{font-size:11px;color:#94a3b8;line-height:1.4}
+.obs-text.lider{color:#60a5fa}
+
+/* INPUT OBSERVAÇÃO DO LÍDER */
+.obs-input-wrap{display:flex;gap:6px;margin-top:8px}
+.obs-input{flex:1;padding:7px 10px;background:#0f172a;border:0.5px solid #334155;border-radius:7px;color:#e2e8f0;font-size:12px;font-family:inherit}
+.obs-input:focus{outline:none;border-color:#3b82f6}
+.obs-send{padding:7px 14px;background:#1d4ed8;border:none;border-radius:7px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap}
+.obs-send:hover{background:#2563eb}
+.obs-empty{font-size:11px;color:#334155;padding:4px 0}
+
 /* FOOTER */
 .tbl-footer{padding:8px 14px;font-size:11px;color:#334155;text-align:right;border-top:0.5px solid #334155}
 
@@ -83,26 +115,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .loading{text-align:center;padding:4rem;color:#475569}
 .spinner{width:32px;height:32px;border:2px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* EMPTY */
 .empty{text-align:center;padding:4rem;color:#475569}
 
-@media(max-width:900px){
-  .kpis{grid-template-columns:repeat(3,1fr)}
-  .tbl th:nth-child(3),.tbl td:nth-child(3){display:none}
-}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
 <div class="page">
-
   <div class="header">
     <div class="header-left">
       <h1>✈ Painel WO — Pernoite</h1>
-      <p>Sincronizado em tempo real com Supabase</p>
+      <p>Clique em uma aeronave para expandir • Sincronizado em tempo real</p>
     </div>
     <div class="header-right">
-      <div class="controls" style="margin:0">
+      <div class="controls">
         <button class="btn primary" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
         <button class="btn" onclick="exportar()">📤 Exportar</button>
         <button class="btn danger" onclick="limpar()">🗑 Limpar</button>
@@ -134,7 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     <table class="tbl">
       <thead>
         <tr>
-          <th style="min-width:130px">Aeronave</th>
+          <th style="min-width:150px">Aeronave</th>
           <th>WOs</th>
           <th>Tarefas</th>
           <th style="min-width:120px">Progresso</th>
@@ -143,92 +169,116 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Conectando ao banco de dados...</p></div></td></tr>
+        <tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Conectando...</p></div></td></tr>
       </tbody>
     </table>
     <div class="tbl-footer" id="footer">—</div>
   </div>
-
 </div>
 
 <script>
-const URL_ = 'https://owyohcqjyiqhabonnstq.supabase.co';
-const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
-const sb = window.supabase.createClient(URL_, KEY);
+const URL_='https://owyohcqjyiqhabonnstq.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93eW9oY3FqeWlxaGFib25uc3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjMxMzksImV4cCI6MjA5MzczOTEzOX0.nRpYEt7bZdJXCCyVKM5wZQOdo1DOH8oQIEu_swRizIA';
+const sb=window.supabase.createClient(URL_,KEY);
 
-async function load() {
-  try {
-    const { data, error } = await sb
-      .from('aircrafts')
-      .select('*, tasks(*, findings(*), observations(*))')
+// Estado dos painéis abertos
+const openPanels = new Set();
+
+function agora(){return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+
+async function load(){
+  try{
+    const{data,error}=await sb.from('aircrafts')
+      .select('*,tasks(*,findings(*),observations(*))')
       .order('code');
-    if (error) throw error;
-    render(data || []);
+    if(error)throw error;
+    render(data||[]);
     setConn(true);
-  } catch(e) {
+  }catch(e){
     setConn(false);
-    document.getElementById('tbody').innerHTML =
+    document.getElementById('tbody').innerHTML=
       `<tr><td colspan="6"><div class="empty">❌ Erro: ${e.message}</div></td></tr>`;
   }
 }
 
-function render(data) {
-  const tbody = document.getElementById('tbody');
-  if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
-    stats(0,0,0,0,0); return;
+function render(data){
+  const tbody=document.getElementById('tbody');
+  if(!data.length){
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
+    stats(0,0,0,0,0);return;
   }
 
-  let totalAC=data.length, totalWO=0, doneWO=0, startedWO=0, findAC=0;
+  let tAC=data.length,tWO=0,dWO=0,sWO=0,fAC=0;
 
-  const rows = data.map(ac => {
-    const tasks = ac.tasks || [];
-    const done  = tasks.filter(t => t.completed).length;
-    const started = tasks.filter(t => t.started && !t.completed).length;
-    const hasFind = tasks.some(t => t.has_finding || (t.findings||[]).some(f=>!f.resolved));
-    totalWO  += tasks.length;
-    doneWO   += done;
-    startedWO+= started;
-    if (hasFind) findAC++;
+  const html=data.map(ac=>{
+    const tasks=ac.tasks||[];
+    const done=tasks.filter(t=>t.completed).length;
+    const started=tasks.filter(t=>t.started&&!t.completed).length;
+    const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
+    tWO+=tasks.length; dWO+=done; sWO+=started;
+    if(hasFind)fAC++;
 
-    const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
-    const woNames = tasks.map(t=>t.wo_number).join(' · ');
+    const pct=tasks.length?Math.round(done/tasks.length*100):0;
+    const woNames=tasks.map(t=>t.wo_number).join(' · ');
 
-    // MTL mais crítico da aeronave
-    const mtlOrder = ['TST','NHE','OK',null];
-    const mtlVals  = tasks.map(t=>t.material);
-    let mtlBest = null;
-    for (const m of mtlOrder) { if (mtlVals.includes(m)) { mtlBest=m; break; } }
-    const mtlHtml = mtlBest === 'OK'  ? `<span class="mtl mtl-ok">OK</span>`
-                  : mtlBest === 'NHE' ? `<span class="mtl mtl-nhe">NHE</span>`
-                  : mtlBest === 'TST' ? `<span class="mtl mtl-tst">TST</span>`
-                  : `<span class="mtl mtl-nd">—</span>`;
+    const mo=['TST','NHE','OK',null];
+    const mv=tasks.map(t=>t.material);
+    let mb=null; for(const m of mo){if(mv.includes(m)){mb=m;break;}}
+    const mh=mb==='OK'?`<span class="mtl mtl-ok">OK</span>`:mb==='NHE'?`<span class="mtl mtl-nhe">NHE</span>`:mb==='TST'?`<span class="mtl mtl-tst">TST</span>`:`<span class="mtl mtl-nd">—</span>`;
 
-    let statusHtml;
-    if (hasFind)          statusHtml = `<span class="badge b-finding">⚠ Finding!</span>`;
-    else if (pct===100)   statusHtml = `<span class="badge b-done">✓ Concluída</span>`;
-    else if (started>0||done>0) statusHtml = `<span class="badge b-started">▶ Andamento</span>`;
-    else                  statusHtml = `<span class="badge b-pending">Aguardando</span>`;
+    let sh;
+    if(hasFind)sh=`<span class="badge b-finding">⚠ Finding!</span>`;
+    else if(pct===100)sh=`<span class="badge b-done">✓ Concluída</span>`;
+    else if(started>0||done>0)sh=`<span class="badge b-started">▶ Andamento</span>`;
+    else sh=`<span class="badge b-pending">Aguardando</span>`;
 
-    const acId = ac.id;
-    const detailRows = tasks.map(task => {
-      const tDone    = task.completed;
-      const tFind    = task.has_finding || (task.findings||[]).some(f=>!f.resolved);
-      const tStarted = task.started && !tDone;
-      const obs      = (task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
-      const finds    = (task.findings||[]);
-      const tMtl     = task.material;
-      const tStatus  = tDone?`<span class="badge b-done" style="font-size:9px">✓ Concluída</span>`:tFind?`<span class="badge b-finding" style="font-size:9px">⚠ Finding</span>`:tStarted?`<span class="badge b-started" style="font-size:9px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px">Aguardando</span>`;
-      const tMtlBadge = tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
-      const obsHtml = obs.length?obs.map(o=>`<div style="display:grid;grid-template-columns:42px 1fr;gap:6px;padding:4px 0;border-bottom:0.5px solid #1e293b"><span style="font-size:10px;color:#64748b;font-variant-numeric:tabular-nums">${o.recorded_at||''}</span><span style="font-size:11px;color:#94a3b8">${o.text||''}</span></div>`).join(''):`<span style="font-size:10px;color:#334155">Sem observações</span>`;
-      const findHtml = finds.map(f=>`<div style="font-size:11px;color:${f.resolved?'#4ade80':'#f87171'};padding:2px 0">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
-      return `<tr class="detail-row" id="detail-${acId}" style="display:none"><td colspan="6" style="padding:0"><div style="padding:10px 14px 10px 32px;background:${tFind?'#180808':'#0d1525'};border-bottom:0.5px solid #1e293b"><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="min-width:200px;max-width:420px"><div style="font-size:11px;font-weight:500;color:#e2e8f0;margin-bottom:4px">WO ${task.wo_number} ${tStatus} ${tMtlBadge}</div><div style="font-size:10px;color:#64748b;line-height:1.5">${task.description||'—'}</div>${findHtml?`<div style="margin-top:6px">${findHtml}</div>`:''}</div><div style="flex:1;min-width:220px"><div style="font-size:10px;color:#475569;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Observações</div>${obsHtml}</div></div></div></td></tr>`;
+    const isOpen=openPanels.has(ac.id);
+
+    // ---- DETALHE DAS TASKS ----
+    const detailHtml=tasks.map(task=>{
+      const tFind=task.has_finding||(task.findings||[]).some(f=>!f.resolved);
+      const tDone=task.completed;
+      const tStarted=task.started&&!tDone;
+      const obs=(task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
+      const finds=(task.findings||[]);
+      const tMtl=task.material;
+
+      const tSt=tDone?`<span class="badge b-done" style="font-size:9px;padding:2px 7px">✓ Concluída</span>`:tFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`:tStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
+      const tMb=tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
+
+      const findHtml=finds.map(f=>`<div class="finding-item ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
+
+      const obsHtml=obs.length
+        ?obs.map(o=>`<div class="obs-entry">
+            <div class="obs-time">${o.recorded_at||'--:--'}</div>
+            <div class="obs-text ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div>
+          </div>`).join('')
+        :`<div class="obs-empty">Nenhuma observação ainda</div>`;
+
+      return `<div class="task-item" style="background:${tFind?'#180808':'transparent'}">
+        <div class="task-header">
+          <span class="task-wo-num">WO ${task.wo_number}</span>
+          ${tSt} ${tMb}
+        </div>
+        <div class="task-desc">${task.description||'—'}</div>
+        ${findHtml?`<div style="margin-bottom:6px">${findHtml}</div>`:''}
+        <div class="obs-area">
+          <div class="obs-label">Observações</div>
+          <div class="obs-list">${obsHtml}</div>
+          <div class="obs-input-wrap">
+            <input class="obs-input" id="obs-inp-${task.id}" placeholder="Líder: adicionar observação..." 
+              onkeydown="if(event.key==='Enter')enviarObs('${task.id}')"/>
+            <button class="obs-send" onclick="enviarObs('${task.id}')">Enviar</button>
+          </div>
+        </div>
+      </div>`;
     }).join('');
 
-    return `<tr class="${hasFind?'finding':''} ac-row" onclick="toggleDetail('${acId}')" style="cursor:pointer">
+    return `
+    <tr class="ac-row ${hasFind?'finding':''}" onclick="toggleDetail('${ac.id}')">
       <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:10px;color:#475569;transition:transform .2s" id="arrow-${acId}">▶</span>
+        <div style="display:flex;align-items:center">
+          <span class="arrow ${isOpen?'open':''}" id="arrow-${ac.id}">▶</span>
           <div>
             <div class="ac-code">${ac.code}</div>
             <div class="ac-tech">👤 ${ac.technician||'—'}</div>
@@ -243,120 +293,119 @@ function render(data) {
           <div class="prog-txt">${pct}%</div>
         </div>
       </td>
-      <td>${mtlHtml}</td>
-      <td>${statusHtml}</td>
-    </tr>${detailRows}`;
+      <td>${mh}</td>
+      <td>${sh}</td>
+    </tr>
+    <tr class="detail-row" id="detail-${ac.id}" style="display:${isOpen?'table-row':'none'}">
+      <td colspan="6">
+        <div class="detail-inner">${detailHtml}</div>
+      </td>
+    </tr>`;
   }).join('');
 
-  tbody.innerHTML = rows;
-  stats(totalAC, totalWO, doneWO, startedWO, findAC);
-  document.getElementById('footer').textContent =
-    `⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
+  tbody.innerHTML=html;
+  stats(tAC,tWO,dWO,sWO,fAC);
+  document.getElementById('footer').textContent=`⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
 }
 
-function stats(ac,total,done,started,findings) {
-  const pend = total - done - started;
-  document.getElementById('k-ac').textContent    = ac;
-  document.getElementById('k-total').textContent = total;
-  document.getElementById('k-done').textContent  = done;
-  document.getElementById('k-pct').textContent   = total ? Math.round(done/total*100)+'%' : '0%';
-  document.getElementById('k-find').textContent  = findings;
-  document.getElementById('s-done').textContent  = `${done} Concluída${done!==1?'s':''}`;
-  document.getElementById('s-and').textContent   = `${started} Em Andamento`;
-  document.getElementById('s-pend').textContent  = `${pend} Não Iniciada${pend!==1?'s':''}`;
-  document.getElementById('s-find').textContent  = `${findings} Aeronave${findings!==1?'s':''} com Finding`;
+function toggleDetail(acId){
+  if(openPanels.has(acId)) openPanels.delete(acId);
+  else openPanels.add(acId);
+  const row=document.getElementById(`detail-${acId}`);
+  const arrow=document.getElementById(`arrow-${acId}`);
+  if(row) row.style.display=openPanels.has(acId)?'table-row':'none';
+  if(arrow) arrow.classList.toggle('open', openPanels.has(acId));
 }
 
-function setConn(on) {
-  document.getElementById('cdot').className   = `conn-dot ${on?'on':'off'}`;
-  document.getElementById('clabel').textContent = on ? 'Conectado ✓' : 'Desconectado';
+async function enviarObs(taskId){
+  const inp=document.getElementById(`obs-inp-${taskId}`);
+  if(!inp)return;
+  const texto=inp.value.trim();
+  if(!texto)return;
+  inp.value='';
+  await sb.from('observations').insert([{
+    task_id:taskId,
+    text:`[Líder] ${texto}`,
+    recorded_at:agora()
+  }]);
+  // Não precisa recarregar - o realtime vai atualizar
 }
 
-async function importar(ev) {
-  const file = ev.target.files[0]; if (!file) return;
-  document.getElementById('tbody').innerHTML =
-    `<tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Importando planilha...</p></div></td></tr>`;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const wb   = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-      // Usar header:1 para ler como arrays brutos, ignorando a primeira linha como header
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
+function stats(ac,total,done,started,findings){
+  const pend=total-done-started;
+  document.getElementById('k-ac').textContent=ac;
+  document.getElementById('k-total').textContent=total;
+  document.getElementById('k-done').textContent=done;
+  document.getElementById('k-pct').textContent=total?Math.round(done/total*100)+'%':'0%';
+  document.getElementById('k-find').textContent=findings;
+  document.getElementById('s-done').textContent=`${done} Concluída${done!==1?'s':''}`;
+  document.getElementById('s-and').textContent=`${started} Em Andamento`;
+  document.getElementById('s-pend').textContent=`${pend} Não Iniciada${pend!==1?'s':''}`;
+  document.getElementById('s-find').textContent=`${findings} Aeronave${findings!==1?'s':''} com Finding`;
+}
+
+function setConn(on){
+  document.getElementById('cdot').className=`conn-dot ${on?'on':'off'}`;
+  document.getElementById('clabel').textContent=on?'Conectado ✓':'Desconectado';
+}
+
+async function importar(ev){
+  const file=ev.target.files[0];if(!file)return;
+  document.getElementById('tbody').innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Importando planilha...</p></div></td></tr>`;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
       await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
       await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
-      const map = {};
-      let tecnicoAtual = 'Não atribuído';
-
-      // Padrão de código de aeronave: XX-XXX (ex: PR-YXA, PS-ADN)
-      const reAC = /^[A-Z]{2}-[A-Z0-9]{2,4}$/;
-
-      rows.forEach(row => {
-        const col0 = String(row[0]||'').trim();
-        const col1 = String(row[1]||'').trim();
-        const col2 = String(row[2]||'').trim();
-        const col3 = String(row[3]||'').trim();
-        const col4 = String(row[4]||'').trim();
-
-        // Ignorar linhas sem código de aeronave válido
-        if (!reAC.test(col0)) return;
-
-        // Linha de HEADER da aeronave:
-        // col1 contém datas/BOX OU col3 é "PRIORIDADE"
-        const isHeader = col3.toUpperCase() === 'PRIORIDADE'
-                      || col1.toUpperCase().includes('BOX')
-                      || col1.includes('|');
-
-        if (isHeader) {
-          // Técnico está em col2 (ex: "GARCIA - MATHEUS")
-          if (col2 && col2.toUpperCase() !== 'PRIORIDADE') {
-            tecnicoAtual = col2;
-          }
-          if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
-          else map[col0].technician = tecnicoAtual;
+      const map={};
+      let tecnicoAtual='Não atribuído';
+      const reAC=/^[A-Z]{2}-[A-Z0-9]{2,4}$/;
+      rows.forEach(row=>{
+        const col0=String(row[0]||'').trim();
+        const col1=String(row[1]||'').trim();
+        const col2=String(row[2]||'').trim();
+        const col3=String(row[3]||'').trim();
+        if(!reAC.test(col0))return;
+        const isHeader=col3.toUpperCase()==='PRIORIDADE'||col1.toUpperCase().includes('BOX')||col1.includes('|');
+        if(isHeader){
+          if(col2&&col2.toUpperCase()!=='PRIORIDADE')tecnicoAtual=col2;
+          if(!map[col0])map[col0]={code:col0,technician:tecnicoAtual,tasks:[]};
+          else map[col0].technician=tecnicoAtual;
           return;
         }
-
-        // Linha de TASK: col1 é o número da WO (numérico ou alfanumérico)
-        const wo   = col1;
-        const desc = col2;
-        if (!wo) return;
-
-        if (!map[col0]) map[col0] = { code: col0, technician: tecnicoAtual, tasks: [] };
-        // Prioridade está em col[3] (IMPRET, ALTA, BORO, etc.)
-        const prioridade = String(row[3]||'').trim();
-        // Task code pode estar em col[2] e descrição completa em col[2] mesmo
-        // Montar descrição completa: [PRIORIDADE] descrição
-        const descCompleta = prioridade && prioridade !== desc
-          ? '[' + prioridade + '] ' + desc
-          : desc;
-        map[col0].tasks.push({wo_number: wo, description: descCompleta});
+        const wo=col1;
+        const desc=col2;
+        if(!wo)return;
+        const prioridade=col3;
+        const descCompleta=prioridade&&prioridade!==desc?`[${prioridade}] ${desc}`:desc;
+        if(!map[col0])map[col0]={code:col0,technician:tecnicoAtual,tasks:[]};
+        map[col0].tasks.push({wo_number:wo,description:descCompleta});
       });
-      for (const ac of Object.values(map)) {
-        const {data:ins} = await sb.from('aircrafts')
-          .insert([{code:ac.code, technician:ac.technician}]).select();
-        if (ins?.[0] && ac.tasks.length)
-          await sb.from('tasks').insert(
-            ac.tasks.map(t=>({aircraft_id:ins[0].id, wo_number:t.wo_number, description:t.description}))
-          );
+      for(const ac of Object.values(map)){
+        const{data:ins}=await sb.from('aircrafts').insert([{code:ac.code,technician:ac.technician}]).select();
+        if(ins?.[0]&&ac.tasks.length)
+          await sb.from('tasks').insert(ac.tasks.map(t=>({aircraft_id:ins[0].id,wo_number:t.wo_number,description:t.description})));
       }
       await load();
-      alert('✅ Planilha importada com sucesso!');
-    } catch(err) { alert('❌ Erro: '+err.message); await load(); }
+      alert('✅ Planilha importada!');
+    }catch(err){alert('❌ Erro: '+err.message);await load();}
   };
   reader.readAsArrayBuffer(file);
-  ev.target.value = '';
+  ev.target.value='';
 }
 
-async function exportar() {
-  const {data} = await sb.from('aircrafts').select('*, tasks(*, observations(*), findings(*))');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-  a.download = `wo-backup-${new Date().toISOString().split('T')[0]}.json`;
+async function exportar(){
+  const{data}=await sb.from('aircrafts').select('*,tasks(*,observations(*),findings(*))');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download=`wo-backup-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
 }
 
-async function limpar() {
-  if (!confirm('⚠️ Apagar TODOS os dados do banco? Esta ação não pode ser desfeita.')) return;
+async function limpar(){
+  if(!confirm('⚠️ Apagar TODOS os dados? Esta ação não pode ser desfeita.'))return;
   await sb.from('observations').delete().neq('id','00000000-0000-0000-0000-000000000000');
   await sb.from('findings').delete().neq('id','00000000-0000-0000-0000-000000000000');
   await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
@@ -364,21 +413,13 @@ async function limpar() {
   await load();
 }
 
-// Realtime
+// Realtime — mantém painéis abertos ao atualizar
 sb.channel('painel-rt')
-  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'}, load)
-  .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'}, load)
-  .on('postgres_changes',{event:'*',schema:'public',table:'findings'}, load)
-  .on('postgres_changes',{event:'*',schema:'public',table:'observations'}, load)
-  .subscribe(s => setConn(s==='SUBSCRIBED'));
-
-function toggleDetail(acId) {
-  const rows = document.querySelectorAll(`#detail-${acId}`);
-  const arrow = document.getElementById(`arrow-${acId}`);
-  const isOpen = rows.length && rows[0].style.display !== 'none';
-  rows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
-  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
-}
+  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'},load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'findings'},load)
+  .on('postgres_changes',{event:'*',schema:'public',table:'observations'},load)
+  .subscribe(s=>setConn(s==='SUBSCRIBED'));
 
 load();
 </script>
