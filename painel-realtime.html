@@ -160,7 +160,7 @@ async function load() {
   try {
     const { data, error } = await sb
       .from('aircrafts')
-      .select('*, tasks(*, findings(*))')
+      .select('*, tasks(*, findings(*), observations(*))')
       .order('code');
     if (error) throw error;
     render(data || []);
@@ -210,18 +210,33 @@ function render(data) {
     else if (started>0||done>0) statusHtml = `<span class="badge b-started">▶ Andamento</span>`;
     else                  statusHtml = `<span class="badge b-pending">Aguardando</span>`;
 
-    return `<tr class="${hasFind?'finding':''}">
+    const acId = ac.id;
+    const detailRows = tasks.map(task => {
+      const tDone    = task.completed;
+      const tFind    = task.has_finding || (task.findings||[]).some(f=>!f.resolved);
+      const tStarted = task.started && !tDone;
+      const obs      = (task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
+      const finds    = (task.findings||[]);
+      const tMtl     = task.material;
+      const tStatus  = tDone?`<span class="badge b-done" style="font-size:9px">✓ Concluída</span>`:tFind?`<span class="badge b-finding" style="font-size:9px">⚠ Finding</span>`:tStarted?`<span class="badge b-started" style="font-size:9px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px">Aguardando</span>`;
+      const tMtlBadge = tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
+      const obsHtml = obs.length?obs.map(o=>`<div style="display:grid;grid-template-columns:42px 1fr;gap:6px;padding:4px 0;border-bottom:0.5px solid #1e293b"><span style="font-size:10px;color:#64748b;font-variant-numeric:tabular-nums">${o.recorded_at||''}</span><span style="font-size:11px;color:#94a3b8">${o.text||''}</span></div>`).join(''):`<span style="font-size:10px;color:#334155">Sem observações</span>`;
+      const findHtml = finds.map(f=>`<div style="font-size:11px;color:${f.resolved?'#4ade80':'#f87171'};padding:2px 0">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
+      return `<tr class="detail-row" id="detail-${acId}" style="display:none"><td colspan="6" style="padding:0"><div style="padding:10px 14px 10px 32px;background:${tFind?'#180808':'#0d1525'};border-bottom:0.5px solid #1e293b"><div style="display:flex;gap:16px;flex-wrap:wrap"><div style="min-width:200px;max-width:420px"><div style="font-size:11px;font-weight:500;color:#e2e8f0;margin-bottom:4px">WO ${task.wo_number} ${tStatus} ${tMtlBadge}</div><div style="font-size:10px;color:#64748b;line-height:1.5">${task.description||'—'}</div>${findHtml?`<div style="margin-top:6px">${findHtml}</div>`:''}</div><div style="flex:1;min-width:220px"><div style="font-size:10px;color:#475569;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Observações</div>${obsHtml}</div></div></div></td></tr>`;
+    }).join('');
+
+    return `<tr class="${hasFind?'finding':''} ac-row" onclick="toggleDetail('${acId}')" style="cursor:pointer">
       <td>
-        <div class="ac-code">${ac.code}</div>
-        <div class="ac-tech">👤 ${ac.technician||'—'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:#475569;transition:transform .2s" id="arrow-${acId}">▶</span>
+          <div>
+            <div class="ac-code">${ac.code}</div>
+            <div class="ac-tech">👤 ${ac.technician||'—'}</div>
+          </div>
+        </div>
       </td>
-      <td>
-        <div class="wo-count">${done}/${tasks.length}</div>
-      </td>
-      <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div>
-        <div style="font-size:10px;color:#475569;margin-top:2px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${tasks.map(t=>t.description||'').filter(Boolean).join(' · ')||''}
-        </div></td>
+      <td><div class="wo-count">${done}/${tasks.length}</div></td>
+      <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
       <td>
         <div class="prog-cell">
           <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
@@ -230,7 +245,7 @@ function render(data) {
       </td>
       <td>${mtlHtml}</td>
       <td>${statusHtml}</td>
-    </tr>`;
+    </tr>${detailRows}`;
   }).join('');
 
   tbody.innerHTML = rows;
@@ -356,6 +371,14 @@ sb.channel('painel-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'findings'}, load)
   .on('postgres_changes',{event:'*',schema:'public',table:'observations'}, load)
   .subscribe(s => setConn(s==='SUBSCRIBED'));
+
+function toggleDetail(acId) {
+  const rows = document.querySelectorAll(`#detail-${acId}`);
+  const arrow = document.getElementById(`arrow-${acId}`);
+  const isOpen = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
 
 load();
 </script>
