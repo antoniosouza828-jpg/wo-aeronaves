@@ -104,8 +104,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
       <p>Todos os turnos encerrados com detalhes completos</p>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" onclick="exportarExcel()" style="background:#052e16;border-color:#166534;color:#4ade80">📊 Exportar Excel</button>
-      <button class="btn" onclick="exportarPDF()" style="background:#450a0a;border-color:#7f1d1d;color:#fca5a5">📄 Exportar PDF</button>
+      <button class="btn" onclick="exportarExcel(this)" style="background:#052e16;border-color:#166534;color:#4ade80">📊 Exportar Excel</button>
+      <button class="btn" onclick="exportarPDF(this)" style="background:#450a0a;border-color:#7f1d1d;color:#fca5a5">📄 Exportar PDF</button>
       <a href="painel-realtime.html" class="btn">← Voltar ao Painel</a>
     </div>
   </div>
@@ -251,8 +251,7 @@ function toggleAero(key){
 // ═══════════════════════════════════════
 // EXPORTAR EXCEL
 // ═══════════════════════════════════════
-async function exportarExcel(){
-  const btn=event.target;
+async function exportarExcel(btn){
   btn.textContent='⏳ Gerando...';btn.disabled=true;
   try{
     const{data,error}=await sb.from('turnos')
@@ -362,8 +361,7 @@ async function exportarExcel(){
 // ═══════════════════════════════════════
 // EXPORTAR PDF
 // ═══════════════════════════════════════
-async function exportarPDF(){
-  const btn=event.target;
+async function exportarPDF(btn){
   btn.textContent='⏳ Gerando...';btn.disabled=true;
   try{
     const{data,error}=await sb.from('turnos')
