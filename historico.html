@@ -458,10 +458,8 @@ async function exportarPDF(btn){
         const rows=[];
         tasks.forEach(task=>{
           const obs=(task.observacoes||[]);
-          const finds=(task.findings||[]).map(f=>(f.resolved?'[OK] ':'')+f.description).join('
-');
-          const obsText=obs.map(o=>`${o.recorded_at||''} ${o.text||''}`).join('
-');
+          const finds=(task.findings||[]).map(f=>(f.resolved?'[OK] ':'')+f.description).join('\n');
+          const obsText=obs.map(o=>`${o.recorded_at||''} ${o.text||''}`).join('\n');
           rows.push([
             task.wo_number||'',
             (task.descricao||'').substring(0,60)+(task.descricao?.length>60?'...':''),
