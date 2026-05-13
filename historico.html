@@ -127,16 +127,17 @@ async function load(){
   const grid=document.getElementById('turnos-grid');
   try{
     const{data,error}=await sb.from('turnos')
-      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .select('*,turno_aeronaves(*,turno_tarefas!turno_aeronave_id(*))')
       .order('criado_em',{ascending:false});
     if(error)throw error;
-    if(!data.length){
+    if(!data||!data.length){
       grid.innerHTML='<div class="empty">📭 Nenhum turno encerrado ainda.<br>Use o botão "Encerrar Turno" no painel para salvar o histórico.</div>';
       return;
     }
     grid.innerHTML=data.map(t=>renderTurno(t)).join('');
   }catch(e){
-    grid.innerHTML=`<div class="empty">❌ Erro: ${e.message}</div>`;
+    console.error('Erro ao carregar histórico:',e);
+    grid.innerHTML=`<div class="empty">❌ Erro ao carregar: ${e.message||JSON.stringify(e)}<br><small style="color:#475569">Verifique o console (F12) para detalhes.</small></div>`;
   }
 }
 
@@ -255,7 +256,7 @@ async function exportarExcel(btn){
   btn.textContent='⏳ Gerando...';btn.disabled=true;
   try{
     const{data,error}=await sb.from('turnos')
-      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .select('*,turno_aeronaves(*,turno_tarefas!turno_aeronave_id(*))')
       .order('criado_em',{ascending:false});
     if(error)throw error;
 
@@ -365,7 +366,7 @@ async function exportarPDF(btn){
   btn.textContent='⏳ Gerando...';btn.disabled=true;
   try{
     const{data,error}=await sb.from('turnos')
-      .select('*,turno_aeronaves(*,turno_tarefas(*))')
+      .select('*,turno_aeronaves(*,turno_tarefas!turno_aeronave_id(*))')
       .order('criado_em',{ascending:false});
     if(error)throw error;
 
