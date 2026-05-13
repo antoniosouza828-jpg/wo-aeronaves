@@ -214,6 +214,8 @@ async function abrirAeronave(id, code, tech) {
 }
 
 function voltar() {
+  // Remove canal ativo ao sair da aeronave
+  if (canalAtivo) { sb.removeChannel(canalAtivo); canalAtivo = null; }
   curAC = null; woStarted = false;
   document.getElementById('screen-select').style.display = 'block';
   document.getElementById('screen-tasks').style.display  = 'none';
@@ -336,9 +338,16 @@ function toggleObs(id, btn) {
   body.classList.toggle('open');
 }
 
+let canalAtivo = null;
+
 function subscrever() {
   if (!curAC) return;
-  sb.channel('tasks-rt')
+  // Remove canal anterior antes de criar novo (evita vazamento de subscriptions)
+  if (canalAtivo) {
+    sb.removeChannel(canalAtivo);
+    canalAtivo = null;
+  }
+  canalAtivo = sb.channel('tasks-rt-' + curAC.id)
     .on('postgres_changes',{event:'*',schema:'public',table:'tasks',filter:`aircraft_id=eq.${curAC.id}`}, carregarTasks)
     .on('postgres_changes',{event:'*',schema:'public',table:'observations'}, carregarTasks)
     .on('postgres_changes',{event:'*',schema:'public',table:'findings'}, carregarTasks)
