@@ -238,24 +238,34 @@ async function loadTurno(){
 }
 
 function renderTurno(data){
-  // KPIs
-  let tWO=0,dWO=0,sWO=0,fAtivos=0;
+  // KPIs — separar WOs únicas de tarefas
+  let tWOunicas=0, dWO=0, sWO=0, pWO=0, tTarefas=0, dTarefas=0, fAtivos=0;
   data.forEach(ac=>{
     const tasks=ac.tasks||[];
-    tWO+=tasks.length;
-    dWO+=tasks.filter(t=>t.completed).length;
-    sWO+=tasks.filter(t=>t.started&&!t.completed).length;
+    tTarefas+=tasks.length;
+    dTarefas+=tasks.filter(t=>t.completed).length;
     fAtivos+=tasks.filter(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved)).length;
+
+    // Agrupar por WO para contar WOs únicas
+    const grupos={};
+    tasks.forEach(t=>{ if(!grupos[t.wo_number]) grupos[t.wo_number]=[]; grupos[t.wo_number].push(t); });
+    Object.values(grupos).forEach(woTasks=>{
+      tWOunicas++;
+      const todoConcluido=woTasks.every(t=>t.completed);
+      const algumStarted=woTasks.some(t=>t.started);
+      if(todoConcluido) dWO++;
+      else if(algumStarted) sWO++;
+      else pWO++;
+    });
   });
-  const pct=tWO?Math.round(dWO/tWO*100):0;
-  const pend=tWO-dWO-sWO;
+  const pct=tTarefas?Math.round(dTarefas/tTarefas*100):0;
 
   document.getElementById('k-ac').textContent=data.length||'—';
-  document.getElementById('k-pct').textContent=tWO?(pct+'%'):'—';
-  document.getElementById('k-and').textContent=tWO?sWO:'—';
-  document.getElementById('k-pend').textContent=tWO?pend:'—';
-  document.getElementById('k-find').textContent=tWO?fAtivos:'—';
-  document.getElementById('turno-resumo').textContent=tWO?`${dWO}/${tWO} WOs concluídas`:'';
+  document.getElementById('k-pct').textContent=tTarefas?(pct+'%'):'—';
+  document.getElementById('k-and').textContent=tWOunicas?sWO:'—';
+  document.getElementById('k-pend').textContent=tWOunicas?pWO:'—';
+  document.getElementById('k-find').textContent=fAtivos||'—';
+  document.getElementById('turno-resumo').textContent=tWOunicas?`${dWO}/${tWOunicas} WOs · ${dTarefas}/${tTarefas} tarefas`:'';
 
   // Lista de aeronaves
   const acList=document.getElementById('ac-list');
@@ -268,6 +278,7 @@ function renderTurno(data){
       const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
       const started=tasks.filter(t=>t.started&&!t.completed).length;
       const p=tasks.length?Math.round(done/tasks.length*100):0;
+      const wosU=[...new Set(tasks.map(t=>t.wo_number))];
       const mo=['TST','NHE','OK',null];
       const mv=tasks.map(t=>t.material);
       let mb=null;for(const m of mo){if(mv.includes(m)){mb=m;break;}}
@@ -282,7 +293,7 @@ function renderTurno(data){
         </div>
         ${badge}
         ${mtlB}
-        <div style="font-size:10px;color:#64748b;text-align:right">${done}/${tasks.length}</div>
+        <div style="font-size:10px;color:#64748b;text-align:right">${wosU.length}WO · ${done}/${tasks.length}tar.</div>
       </div>`;
     }).join('');
   }
