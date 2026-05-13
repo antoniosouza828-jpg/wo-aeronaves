@@ -348,7 +348,77 @@ function render(data){
   verificarNovosFindings(data);
   stats(tAC,tWO,dWO,sWO,fAC);
   document.getElementById('footer').textContent=`⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
+  ajustarEscala(data.length);
 }
+
+function ajustarEscala(numAero){
+  // Altura disponível descontando header, kpis, summary e footer
+  const alturaTotal = window.innerHeight;
+  const alturaFixa  = 280; // header + kpis + summary + padding
+  const alturaTabela = alturaTotal - alturaFixa;
+
+  // Calcular altura ideal por linha
+  const minAltura = 52;  // mínimo confortável
+  const maxAltura = 160; // máximo para não ficar gigante
+  const ideal = numAero > 0 ? Math.floor(alturaTabela / numAero) : minAltura;
+  const alturaPorLinha = Math.min(maxAltura, Math.max(minAltura, ideal));
+
+  // Calcular tamanho de fonte proporcional
+  const escala = alturaPorLinha / 52; // razão em relação ao tamanho base
+  const fontCodigo  = Math.min(20, Math.max(12, Math.round(14 * escala))) + 'px';
+  const fontTecnico = Math.min(14, Math.max(10, Math.round(11 * escala))) + 'px';
+  const fontWo      = Math.min(16, Math.max(10, Math.round(12 * escala))) + 'px';
+  const fontPct     = Math.min(14, Math.max(10, Math.round(11 * escala))) + 'px';
+  const barraLarg   = Math.min(140, Math.max(60, Math.round(70 * escala))) + 'px';
+  const barraAlt    = Math.min(8,   Math.max(4,  Math.round(4  * escala))) + 'px';
+  const paddCell    = Math.min(18, Math.max(7,   Math.round(9  * escala))) + 'px 14px';
+
+  // Aplicar nas linhas de aeronave
+  document.querySelectorAll('.ac-row').forEach(row => {
+    row.style.height = alturaPorLinha + 'px';
+    const tds = row.querySelectorAll('td');
+    tds.forEach(td => td.style.padding = paddCell);
+
+    const cod  = row.querySelector('.ac-code');
+    const tech = row.querySelector('.ac-tech');
+    const woc  = row.querySelector('.wo-count');
+    const wol  = row.querySelector('.wo-list');
+    const pbar = row.querySelector('.prog-bar');
+    const pfil = row.querySelector('.prog-bar');
+    const ptxt = row.querySelector('.prog-txt');
+    const arrow = row.querySelector('.arrow');
+
+    if(cod)  cod.style.fontSize  = fontCodigo;
+    if(tech) tech.style.fontSize = fontTecnico;
+    if(woc)  woc.style.fontSize  = fontWo;
+    if(wol)  wol.style.fontSize  = fontTecnico;
+    if(ptxt) ptxt.style.fontSize = fontPct;
+    if(arrow) arrow.style.fontSize = Math.min(14, Math.max(9, Math.round(10 * escala))) + 'px';
+
+    if(pbar){
+      pbar.style.width  = barraLarg;
+      pbar.style.height = barraAlt;
+    }
+
+    // Badges e MTL também escalam
+    row.querySelectorAll('.badge,.mtl').forEach(b => {
+      b.style.fontSize = Math.min(13, Math.max(9, Math.round(10 * escala))) + 'px';
+      b.style.padding  = escala > 1.5 ? '4px 12px' : '3px 9px';
+    });
+  });
+
+  // Cabeçalho da tabela também escala levemente
+  document.querySelectorAll('.tbl th').forEach(th => {
+    th.style.fontSize = Math.min(12, Math.max(9, Math.round(10 * escala))) + 'px';
+    th.style.padding  = Math.min(14, Math.max(8, Math.round(10 * escala))) + 'px 14px';
+  });
+}
+
+// Re-escalar ao redimensionar a janela
+window.addEventListener('resize', () => {
+  const rows = document.querySelectorAll('.ac-row');
+  if(rows.length > 0) ajustarEscala(rows.length);
+});
 
 function toggleDetail(acId){
   if(openPanels.has(acId)) openPanels.delete(acId);
