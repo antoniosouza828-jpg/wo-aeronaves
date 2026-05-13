@@ -6,6 +6,8 @@
 <title>Gestores — WO Pernoite</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -126,6 +128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     <div class="nav">
       <a href="painel-realtime.html">📺 Painel TV</a>
       <a href="historico.html">📋 Histórico</a>
+      <button class="btn" onclick="gerarRelatorioPDF(this)" style="background:#1a0a2e;border-color:#6d28d9;color:#c4b5fd">📄 Relatório PDF</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <div>
@@ -392,7 +395,138 @@ sb.channel('gestores-rt')
 loadTurno();
 loadHistorico();
 
-// Polling fallback a cada 20s
+
+// ─── GERAR RELATÓRIO PDF DO TURNO ATUAL ────────────────────────────────────
+async function gerarRelatorioPDF(btn){
+  btn.textContent='⏳ Gerando...'; btn.disabled=true;
+  try{
+    // Buscar dados atuais (aircrafts + tasks + findings + observations)
+    const{data,error}=await sb.from('aircrafts')
+      .select('*,tasks(*,findings(*),observations(*))')
+      .order('code');
+    if(error) throw error;
+    if(!data||!data.length) throw new Error('Nenhuma aeronave no turno atual. Importe uma planilha primeiro.');
+
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const W=doc.internal.pageSize.getWidth();
+    let y=15;
+    const checkY=(h=10)=>{ if(y+h>195){doc.addPage();y=15;} };
+
+    // ── CAPA
+    doc.setFillColor(30,58,138);
+    doc.rect(0,0,W,40,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(18); doc.setFont('helvetica','bold');
+    doc.text('RELATORIO DO TURNO - WO PERNOITE',W/2,18,{align:'center'});
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text('Relatorio gerado em: '+new Date().toLocaleString('pt-BR'),W/2,28,{align:'center'});
+
+    // ── KPIs resumo
+    let tWO=0,dWO=0,fAtivos=0;
+    data.forEach(ac=>{
+      const tasks=ac.tasks||[];
+      tWO+=tasks.length;
+      dWO+=tasks.filter(t=>t.completed).length;
+      fAtivos+=tasks.filter(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved)).length;
+    });
+    const pctGeral=tWO?Math.round(dWO/tWO*100):0;
+    doc.text(`${data.length} aeronaves | ${tWO} tarefas | ${dWO} concluidas (${pctGeral}%) | ${fAtivos} finding${fAtivos!==1?'s':''}`,W/2,35,{align:'center'});
+    y=50;
+
+    // ── RESUMO POR AERONAVE
+    doc.setTextColor(30,58,138);
+    doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text('RESUMO POR AERONAVE',14,y); y+=5;
+
+    doc.autoTable({
+      startY:y,
+      head:[['Aeronave','Tecnico','WOs unicas','Tarefas','Concluidas','Pendentes','MTL Critico','Finding','%']],
+      body:data.map(ac=>{
+        const tasks=ac.tasks||[];
+        const done=tasks.filter(t=>t.completed).length;
+        const wosU=[...new Set(tasks.map(t=>t.wo_number))];
+        const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
+        const mo=['TST','NHE','OK',null];
+        const mv=tasks.map(t=>t.material);
+        let mb=null; for(const m of mo){if(mv.includes(m)){mb=m;break;}}
+        return[ac.code,ac.technician||'—',wosU.length,tasks.length,done,tasks.length-done,mb||'—',hasFind?'SIM':'—',tWO?Math.round(done/tasks.length*100)+'%':'—'];
+      }),
+      styles:{fontSize:8,cellPadding:3},
+      headStyles:{fillColor:[30,58,138],textColor:255,fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[241,245,249]},
+      margin:{left:14,right:14},
+    });
+    y=doc.lastAutoTable.finalY+12;
+
+    // ── DETALHE POR AERONAVE
+    data.forEach(ac=>{
+      const tasks=ac.tasks||[];
+      if(!tasks.length) return;
+
+      checkY(18);
+      doc.setFillColor(30,41,59);
+      doc.rect(14,y,W-28,8,'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(10); doc.setFont('helvetica','bold');
+      doc.text('AERONAVE: '+ac.code+' — '+( ac.technician||'—'),16,y+5.5);
+      const doneCnt=tasks.filter(t=>t.completed).length;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(doneCnt+'/'+tasks.length+' tarefas concluidas',W-16,y+5.5,{align:'right'});
+      y+=12;
+
+      // Agrupar por WO
+      const grupos={};
+      tasks.forEach(t=>{ if(!grupos[t.wo_number]) grupos[t.wo_number]=[]; grupos[t.wo_number].push(t); });
+
+      const rows=[];
+      Object.entries(grupos).forEach(([woNum,woTasks])=>{
+        woTasks.forEach((task,i)=>{
+          const obs=(task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
+          const finds=(task.findings||[]).map(f=>(f.resolved?'[OK] ':'')+( f.description||'')).join('\n');
+          const obsText=obs.map(o=>`${o.recorded_at||'--:--'} ${o.text||''}`).join('\n');
+          rows.push([
+            i===0?woNum:'',
+            (task.description||'').substring(0,65)+(task.description?.length>65?'...':''),
+            task.completed?'Concluida':'Pendente',
+            task.material||'—',
+            finds||'—',
+            obsText||'—'
+          ]);
+        });
+      });
+
+      if(rows.length){
+        doc.autoTable({
+          startY:y,
+          head:[['WO','Descricao da Tarefa','Status','MTL','Findings','Observacoes']],
+          body:rows,
+          styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
+          headStyles:{fillColor:[51,65,85],textColor:255,fontSize:7},
+          columnStyles:{
+            0:{cellWidth:18},1:{cellWidth:65},2:{cellWidth:18},
+            3:{cellWidth:10},4:{cellWidth:35},5:{cellWidth:W-28-146}
+          },
+          margin:{left:14,right:14},
+          didParseCell:(d)=>{
+            if(d.column.index===2&&d.cell.raw==='Concluida'){d.cell.styles.textColor=[74,222,128];d.cell.styles.fontStyle='bold';}
+            if(d.column.index===2&&d.cell.raw==='Pendente'){d.cell.styles.textColor=[251,191,36];}
+            if(d.column.index===4&&d.cell.raw&&d.cell.raw!=='—'){d.cell.styles.textColor=[248,113,113];}
+          }
+        });
+        y=doc.lastAutoTable.finalY+8;
+      }
+    });
+
+    const hoje=new Date().toISOString().split('T')[0];
+    doc.save('WO_Turno_'+hoje+'.pdf');
+    btn.textContent='📄 Relatório PDF'; btn.disabled=false;
+  }catch(e){
+    alert('Erro ao gerar PDF:\n'+e.message);
+    btn.textContent='📄 Relatório PDF'; btn.disabled=false;
+  }
+}
+
 let realtimeOkG = false;
 setInterval(()=>{ if(!realtimeOkG){ loadTurno(); loadHistorico(); }}, 20000);
 
