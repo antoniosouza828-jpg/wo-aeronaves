@@ -555,17 +555,18 @@ async function salvarTurno(){
       }
     }
 
-    // Limpar dados atuais
+    // Só limpa se chegou até aqui sem erros
     await sb.from('observations').delete().neq('id','00000000-0000-0000-0000-000000000000');
     await sb.from('findings').delete().neq('id','00000000-0000-0000-0000-000000000000');
     await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
     await sb.from('aircrafts').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    openPanels.clear();
     await load();
     if(confirm('✅ Turno encerrado e salvo no histórico!\n\nAbrir página de histórico agora?')){
       window.open('historico.html','_blank');
     }
   }catch(err){
-    alert('❌ Erro ao salvar turno: '+err.message);
+    alert('❌ Erro ao salvar turno: '+err.message+'\n\nOs dados NÃO foram apagados. Tente novamente.');
   }
 }
 
@@ -700,13 +701,14 @@ sb.channel('painel-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'observations'},load)
   .subscribe(s=>{
     setConn(s==='SUBSCRIBED');
-    if(s==='SUBSCRIBED') console.log('Realtime conectado');
+    realtimeOk = (s==='SUBSCRIBED');
   });
 
-// Polling de fallback a cada 15s para garantir atualização
-setInterval(load, 15000);
+// Polling inteligente: só ativa se realtime estiver offline
+let realtimeOk = false;
+setInterval(()=>{ if(!realtimeOk) load(); }, 15000);
 
-// Reconectar se ficar offline
+// Recarregar ao voltar para a aba
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible') load();
 });

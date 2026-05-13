@@ -264,10 +264,10 @@ async function exportarExcel(){
 
     // ── ABA 1: RESUMO GERAL ──
     const resumoRows=[
-      ['HISTÓRICO DE TURNOS — WO PERNOITE'],
+      ['HISTORICO DE TURNOS - WO PERNOITE'],
       [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
       [],
-      ['Data','Encerrado em','Aeronaves','WOs Total','Concluídas','Pendentes','Findings','% Conclusão'],
+      ['Data','Encerrado em','Aeronaves','WOs Total','Concluidas','Pendentes','Findings','% Conclusao'],
     ];
     data.forEach(t=>{
       const d=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';
@@ -282,10 +282,10 @@ async function exportarExcel(){
 
     // ── ABA 2: DETALHE POR TURNO ──
     const detalheRows=[
-      ['DETALHE POR TURNO — TODAS AS WOs E OBSERVAÇÕES'],
+      ['DETALHE POR TURNO - TODAS AS WOs E OBSERVACOES'],
       [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
       [],
-      ['DATA TURNO','ENCERRADO EM','AERONAVE','TÉCNICO','WO','DESCRIÇÃO','STATUS','MTL','FINDING','CONCLUÍDA EM','HORA OBS','OBSERVAÇÃO'],
+      ['DATA TURNO','ENCERRADO EM','AERONAVE','TECNICO','WO','DESCRICAO','STATUS','MTL','FINDING','CONCLUIDA EM','HORA OBS','OBSERVACAO'],
     ];
     data.forEach(t=>{
       const dTurno=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';
@@ -330,10 +330,10 @@ async function exportarExcel(){
 
     // ── ABA 3: FINDINGS ──
     const findRows=[
-      ['FINDINGS REGISTRADOS — TODOS OS TURNOS'],
+      ['FINDINGS REGISTRADOS - TODOS OS TURNOS'],
       [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
       [],
-      ['DATA TURNO','AERONAVE','TÉCNICO','WO','FINDING','STATUS'],
+      ['DATA TURNO','AERONAVE','TECNICO','WO','FINDING','STATUS'],
     ];
     data.forEach(t=>{
       const dTurno=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR'):'—';

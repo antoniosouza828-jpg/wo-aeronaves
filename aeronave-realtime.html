@@ -445,6 +445,14 @@ document.getElementById('modal').addEventListener('click', e => {
 
 // Iniciar
 carregarAeronaves();
+
+// Recarregar ao voltar para a aba
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    if(curAC) carregarTasks();
+    else carregarAeronaves();
+  }
+});
 </script>
 </body>
 </html>

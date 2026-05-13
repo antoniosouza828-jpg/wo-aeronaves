@@ -384,10 +384,22 @@ sb.channel('gestores-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'aircrafts'},loadTurno)
   .on('postgres_changes',{event:'*',schema:'public',table:'findings'},loadTurno)
   .on('postgres_changes',{event:'*',schema:'public',table:'turnos'},loadHistorico)
-  .subscribe(s=>setConn(s==='SUBSCRIBED'));
+  .subscribe(s=>{
+    setConn(s==='SUBSCRIBED');
+    realtimeOkG=(s==='SUBSCRIBED');
+  });
 
 loadTurno();
 loadHistorico();
+
+// Polling fallback a cada 20s
+let realtimeOkG = false;
+setInterval(()=>{ if(!realtimeOkG){ loadTurno(); loadHistorico(); }}, 20000);
+
+// Reconectar ao voltar para a aba
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ loadTurno(); loadHistorico(); }
+});
 </script>
 </body>
 </html>
