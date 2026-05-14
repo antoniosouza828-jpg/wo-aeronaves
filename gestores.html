@@ -79,7 +79,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .hist-item.bom{border-left-color:#10b981}
 .hist-item.medio{border-left-color:#fbbf24}
 .hist-item.ruim{border-left-color:#f87171}
-.hist-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer}
+.hist-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;gap:10px}
 .hist-header:hover{background:#162032}
 .hist-date{font-size:12px;font-weight:500;color:#e2e8f0}
 .hist-sub{font-size:10px;color:#64748b;margin-top:2px}
@@ -87,6 +87,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .hist-pct.bom{color:#4ade80}
 .hist-pct.medio{color:#fbbf24}
 .hist-pct.ruim{color:#f87171}
+.hist-mini{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.hist-mini-item{font-size:9px;color:#94a3b8;background:#0f172a;padding:2px 6px;border-radius:6px;border:0.5px solid #1e293b;white-space:nowrap}
+.hist-mini-item.verde{color:#4ade80;border-color:#052e16}
+.hist-mini-item.laranja{color:#fcd34d;border-color:#422006}
+.hist-mini-item.vermelho{color:#f87171;border-color:#450a0a}
 .hist-body{display:none;padding:0 12px 10px;border-top:0.5px solid #1e293b}
 .hist-body.open{display:block}
 .hist-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #1e293b;font-size:11px}
@@ -449,9 +454,17 @@ async function loadHistorico(){
 
       return `<div class="hist-item ${cls}">
         <div class="hist-header" onclick="toggleHist('hb-${idx}')">
-          <div>
+          <div style="flex:1;min-width:0">
             <div class="hist-date">📅 ${d}</div>
             <div class="hist-sub">Enc. ${enc||'—'} · ${aeros.length} aeronave${aeros.length!==1?'s':''}</div>
+            <div class="hist-mini">
+              <span class="hist-mini-item">${totalWO} WO</span>
+              <span class="hist-mini-item verde">✓ ${concWO}</span>
+              <span class="hist-mini-item">${tTar} tar.</span>
+              <span class="hist-mini-item verde">✓ ${tConc}</span>
+              ${tDefer>0?`<span class="hist-mini-item laranja">⏸ ${tDefer}</span>`:''}
+              ${t.total_findings>0?`<span class="hist-mini-item vermelho">⚠ ${t.total_findings}</span>`:''}
+            </div>
           </div>
           <div class="hist-pct ${cls}">${p}%</div>
         </div>
