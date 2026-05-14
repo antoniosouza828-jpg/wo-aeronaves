@@ -355,7 +355,7 @@ function renderTurno(data){
     ?tecArr.map(([name,d])=>{
       const p=d.total?Math.round(d.done/d.total*100):0;
       return `<div class="tec-item">
-        <div><div class="tec-name">👤 ${name}</div><div class="tec-ac">${d.aeros.join(', ')}</div></div>
+        <div><div class="tec-name">🪪 ${name}</div><div class="tec-ac">${d.aeros.join(', ')}</div></div>
         <div class="tec-prog">${p}%</div>
       </div>`;
     }).join('')
