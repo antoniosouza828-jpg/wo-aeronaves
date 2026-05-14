@@ -185,8 +185,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
       <thead>
         <tr>
           <th style="min-width:150px">Aeronave</th>
-          <th>Tarefas / WOs</th>
-          <th>Tarefas</th>
+          <th>Status Tarefas</th>
+          <th>WO</th>
           <th style="min-width:120px">Progresso</th>
           <th>MTL</th>
           <th>Status</th>
@@ -340,7 +340,7 @@ function render(data){
         </div>
       </td>
       <td>
-        <span class="wo-count">${wosUnicas.length} WO${wosUnicas.length!==1?'s':''} · ${done}/${tasks.length} tar.</span>
+        <span class="wo-count">${done}/${tasks.length}</span>
       </td>
       <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
       <td>
