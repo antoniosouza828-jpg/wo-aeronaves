@@ -462,13 +462,13 @@ async function enviarObs(taskId){
   const texto=inp.value.trim();
   if(!texto)return;
   inp.value='';
-  await sb.from('observations').insert([{
+  const {error}=await sb.from('observations').insert([{
     task_id:taskId,
     text:texto,
     author:'Líder',
     recorded_at:agora()
   }]);
-  // Não precisa recarregar - o realtime vai atualizar
+  if(error) console.error('Erro obs líder:',error.message);
 }
 
 function stats(ac,wos,total,done,started,findings,defer,obs){

@@ -497,12 +497,13 @@ async function confirmarObs() {
   const texto = document.getElementById('obs-txt').value.trim();
   if (!texto) { alert('Digite a observação!'); return; }
   const hora = agora();
-  await sb.from('observations').insert([{
+  const {error} = await sb.from('observations').insert([{
     author: 'Técnico',
     task_id: obsTaskId,
     text: texto,
     recorded_at: hora
   }]);
+  if(error){ alert('Erro ao registrar: '+error.message); return; }
   fecharModalObs();
   await carregarTasks();
 }
