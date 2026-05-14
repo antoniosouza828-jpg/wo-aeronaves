@@ -207,7 +207,7 @@ async function carregarAeronaves() {
   list.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando...</p></div>';
   try {
     const {data,error} = await sb.from('aircrafts')
-      .select('*, tasks(*)').order('code');
+      .select('*, tasks(*, observations(*))').order('code');
     if (error) throw error;
     if (!data.length) {
       list.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:2rem">Nenhuma aeronave.<br>Importe um Excel no painel.</p>';
@@ -217,8 +217,10 @@ async function carregarAeronaves() {
     data.forEach(ac => {
       const tasks   = ac.tasks || [];
       const done    = tasks.filter(t=>t.completed).length;
-      const pct     = tasks.length ? Math.round(done/tasks.length*100) : 0;
+      const deferred= tasks.filter(t=>t.deferred).length;
+      const pct     = tasks.length ? Math.round((done+deferred)/tasks.length*100) : 0;
       const finds   = tasks.filter(t=>t.has_finding).length;
+      const obsCount= tasks.filter(t=>(t.observations||[]).length>0).length;
       const btn     = document.createElement('button');
       btn.className = 'ac-card';
       btn.innerHTML = `
@@ -227,6 +229,8 @@ async function carregarAeronaves() {
         <div class="ac-card-meta">
           <span>📋 ${tasks.length} WOs</span>
           <span>✓ ${pct}%</span>
+          ${obsCount ? `<span style="color:#3b82f6;font-weight:500">💬 ${obsCount} obs</span>` : ''}
+          ${deferred ? `<span style="color:#d97706;font-weight:500">⏸ ${deferred}</span>` : ''}
           ${finds ? `<span class="ac-card-find">⚠ ${finds} finding${finds>1?'s':''}</span>` : ''}
         </div>`;
       btn.onclick = () => abrirAeronave(ac.id, ac.code, ac.technician);

@@ -76,6 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .b-started{background:#422006;color:#fbbf24}
 .b-pending{background:#1e293b;color:#475569;border:0.5px solid #334155}
 .b-finding{background:#450a0a;color:#f87171;animation:blink 1.5s infinite;border:0.5px solid #7f1d1d}
+.b-obs{background:#1e3a5f;color:#60a5fa;border:0.5px solid #1e3a8a}
 .b-deferred{background:#422006;color:#fcd34d;border:0.5px solid #92400e}
 .mtl{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500}
 .mtl-ok{background:#052e16;color:#4ade80}
@@ -344,12 +345,15 @@ function render(data){
 
 
 
+    const acObs=tasks.filter(t=>(t.observations||[]).length>0).length;
+
     return `
     <tr class="ac-row ${hasFind?'finding':''}" onclick="toggleDetail('${ac.id}')">
       <td>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="arrow ${isOpen?'open':''}" id="arrow-${ac.id}">▶</span>
           <span class="ac-code">${ac.code}</span>
+          ${acObs?`<span class="badge b-obs" style="font-size:9px;padding:2px 6px">💬 ${acObs}</span>`:''}
         </div>
       </td>
       <td><span class="ac-tech">🪪 ${ac.technician||'—'}</span></td>
