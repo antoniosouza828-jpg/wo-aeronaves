@@ -295,7 +295,8 @@ function renderWO(task){
       return `<div class="obs-row">
         <div class="obs-time" style="color:${isLider?'#60a5fa':'#94a3b8'}">${o.recorded_at||'--:--'} ${isLider?'[Líder]':'[Téc]'}</div>
         <div class="obs-txt ${isLider?'lider':''}">${texto}</div>
-      </div>`).join('')
+      </div>`;
+    }).join('')
     :'<div style="font-size:11px;color:#334155;padding:4px 0">Sem observações.</div>';
 
   const findHtml=finds.length
