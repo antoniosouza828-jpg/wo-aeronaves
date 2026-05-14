@@ -96,12 +96,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 /* OBSERVAÇÕES */
 .obs-area{margin-top:6px}
 .obs-label{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-.obs-list{display:flex;flex-direction:column;gap:0}
-.obs-entry{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:5px 0;border-bottom:0.5px solid #1e293b;align-items:start}
-.obs-entry:last-child{border-bottom:none}
-.obs-time{font-size:10px;font-weight:500;color:#475569;font-variant-numeric:tabular-nums;padding-top:1px}
-.obs-text{font-size:11px;color:#94a3b8;line-height:1.4}
-.obs-text.lider{color:#60a5fa}
+.obs-list{display:flex;flex-direction:column;gap:5px;padding:4px 0}
+.obs-bubble-tv{display:flex;flex-direction:column;max-width:90%}
+.obs-bubble-tv.tec{align-self:flex-end;align-items:flex-end}
+.obs-bubble-tv.lider{align-self:flex-start;align-items:flex-start}
+.obs-bubble-tv .obs-author{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+.obs-bubble-tv .obs-msg{padding:4px 9px;border-radius:10px;font-size:11px;line-height:1.4}
+.obs-bubble-tv.tec .obs-msg{background:#1e3a5f;color:#93c5fd;border-bottom-right-radius:2px}
+.obs-bubble-tv.lider .obs-msg{background:#1e293b;color:#e2e8f0;border-bottom-left-radius:2px}
+.obs-bubble-tv .obs-time-small{font-size:9px;color:#334155;margin-top:1px;font-variant-numeric:tabular-nums}
 
 /* INPUT OBSERVAÇÃO DO LÍDER */
 .obs-input-wrap{display:flex;gap:6px;margin-top:8px}
@@ -299,7 +302,13 @@ function render(data){
         const tSt=tDone?`<span style="font-size:9px;color:#4ade80">✓</span>`:tDef?`<span style="font-size:9px;color:#fcd34d" title="${task.defer_reason||''}">⏸</span>`:tFind?`<span style="font-size:9px;color:#f87171">⚠</span>`:task.started?`<span style="font-size:9px;color:#fbbf24">▶</span>`:`<span style="font-size:9px;color:#475569">○</span>`;
         const borderCol=tDone?'#10b981':tDef?'#d97706':tFind?'#f87171':'#334155';
         const findHtml=finds.map(f=>`<div class="finding-item ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
-        const obsHtml=obs.length?obs.map(o=>`<div class="obs-entry"><div class="obs-time">${o.recorded_at||'--:--'}</div><div class="obs-text ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div></div>`).join(''):`<div class="obs-empty">Sem observações</div>`;
+        const obsHtml=obs.length?obs.map(o=>{
+          const isLider=(o.author||'').toLowerCase().includes('líder')||(o.text||'').startsWith('[Líder]');
+          const cls=isLider?'lider':'tec';
+          const autor=isLider?'Líder':'Técnico';
+          const texto=(o.text||'').replace(/^\[Líder\]\s*/,'').replace(/^\[Finding\]\s*/,'⚠ ').replace(/^\[Deferida\]\s*/,'⏸ ');
+          return `<div class="obs-bubble-tv ${cls}"><div class="obs-author">${autor}</div><div class="obs-msg">${texto}</div><div class="obs-time-small">${o.recorded_at||'--:--'}</div></div>`;
+        }).join(''):`<div class="obs-empty">Sem mensagens</div>`;
         return `<div style="padding:8px 0 8px 12px;border-left:2px solid ${borderCol};margin:6px 0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
               ${tSt} <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
@@ -452,7 +461,8 @@ async function enviarObs(taskId){
   inp.value='';
   await sb.from('observations').insert([{
     task_id:taskId,
-    text:`[Líder] ${texto}`,
+    text:texto,
+    author:'Líder',
     recorded_at:agora()
   }]);
   // Não precisa recarregar - o realtime vai atualizar
@@ -628,7 +638,7 @@ async function salvarTurno(){
       for(const task of tasks){
         const obs=(task.observations||[])
           .sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''))
-          .map(o=>({text:o.text,recorded_at:o.recorded_at}));
+          .map(o=>({text:o.text,recorded_at:o.recorded_at,author:o.author||'Técnico'}));
         const finds=(task.findings||[])
           .map(f=>({description:f.description,resolved:f.resolved}));
 

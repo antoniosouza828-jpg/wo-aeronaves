@@ -289,9 +289,12 @@ function renderWO(task){
   const mtlB=task.material==='OK'?'<span class="mtl-ok">OK</span>':task.material==='NHE'?'<span class="mtl-nhe">NHE</span>':task.material==='TST'?'<span class="mtl-tst">TST</span>':'';
 
   const obsHtml=obs.length
-    ?obs.map(o=>`<div class="obs-row">
-        <div class="obs-time">${o.recorded_at||'--:--'}</div>
-        <div class="obs-txt ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div>
+    ?obs.map(o=>{
+      const isLider=(o.author||'').toLowerCase().includes('líder')||(o.text||'').startsWith('[Líder]');
+      const texto=(o.text||'').replace(/^\[Líder\]\s*/,'');
+      return `<div class="obs-row">
+        <div class="obs-time" style="color:${isLider?'#60a5fa':'#94a3b8'}">${o.recorded_at||'--:--'} ${isLider?'[Líder]':'[Téc]'}</div>
+        <div class="obs-txt ${isLider?'lider':''}">${texto}</div>
       </div>`).join('')
     :'<div style="font-size:11px;color:#334155;padding:4px 0">Sem observações.</div>';
 
@@ -406,7 +409,7 @@ async function exportarExcel(btn){
                 i===0?finds:'',
                 i===0?concHora:'',
                 o.recorded_at||'',
-                o.text||''
+                `[${o.author||'Técnico'}] ${o.text||''}`
               ]);
             });
           }
@@ -543,7 +546,7 @@ async function exportarPDF(btn){
         tasks.forEach(task=>{
           const obs=(task.observacoes||[]);
           const finds=(task.findings||[]).map(f=>(f.resolved?'[OK] ':'')+f.description).join('\n');
-          const obsText=obs.map(o=>`${o.recorded_at||''} ${o.text||''}`).join('\n');
+          const obsText=obs.map(o=>`${o.recorded_at||''} [${o.author||'Téc'}] ${(o.text||'').replace(/^\[Líder\]\s*/,'')}`).join('\n');
           rows.push([
             task.wo_number||'',
             (task.descricao||'').substring(0,60)+(task.descricao?.length>60?'...':''),
