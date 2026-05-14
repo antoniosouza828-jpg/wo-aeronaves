@@ -23,7 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* KPIS */
-.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:1rem}
+.kpis{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:1rem}
 .kpi{background:#1e293b;border-radius:10px;padding:10px 14px;border:0.5px solid #334155}
 .kpi-n{font-size:22px;font-weight:500;color:#f8fafc;line-height:1}
 .kpi-l{font-size:10px;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
@@ -31,6 +31,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .kpi.red{border-color:#450a0a}
 .kpi.orange .kpi-n{color:#fcd34d}
 .kpi.orange{border-color:#422006}
+.kpi.blue .kpi-n{color:#60a5fa}
+.kpi.blue{border-color:#1e3a5f}
 
 /* SUMMARY */
 .summary{display:flex;gap:1.5rem;margin-bottom:1.25rem;padding:10px 16px;background:#1e293b;border-radius:8px;border:0.5px solid #334155;flex-wrap:wrap}
@@ -171,8 +173,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     <div class="kpi"><div class="kpi-n" id="k-wo">—</div><div class="kpi-l">WOs</div></div>
     <div class="kpi"><div class="kpi-n" id="k-total">—</div><div class="kpi-l">Tarefas</div></div>
     <div class="kpi"><div class="kpi-n" id="k-done">—</div><div class="kpi-l">Concluídas</div></div>
-    <div class="kpi orange"><div class="kpi-n" id="k-defer">—</div><div class="kpi-l">Deferidas</div></div>
+    <div class="kpi blue"><div class="kpi-n" id="k-obs">—</div><div class="kpi-l">Obs</div></div>
     <div class="kpi red"><div class="kpi-n" id="k-find">—</div><div class="kpi-l">Findings</div></div>
+    <div class="kpi orange"><div class="kpi-n" id="k-defer">—</div><div class="kpi-l">Deferidas</div></div>
     <div class="kpi"><div class="kpi-n" id="k-pct">—</div><div class="kpi-l">Progresso</div></div>
   </div>
 
@@ -233,10 +236,10 @@ function render(data){
   const tbody=document.getElementById('tbody');
   if(!data.length){
     tbody.innerHTML=`<tr><td colspan="7"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
-    stats(0,0,0,0,0,0,0);return;
+    stats(0,0,0,0,0,0,0,0);return;
   }
 
-  let tAC=data.length,tWO=0,dWO=0,sWO=0,fAC=0,tWOunicas=0,tDef=0;
+  let tAC=data.length,tWO=0,dWO=0,sWO=0,fAC=0,tWOunicas=0,tDef=0,tObs=0;
 
   const html=data.map(ac=>{
     const tasks=ac.tasks||[];
@@ -245,6 +248,7 @@ function render(data){
     const started=tasks.filter(t=>t.started&&!t.completed&&!t.deferred).length;
     const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
     tWO+=tasks.length; dWO+=done; sWO+=started; tDef+=deferred;
+    tObs+=tasks.filter(t=>(t.observations||[]).length>0).length;
     if(hasFind)fAC++;
 
     const pct=tasks.length?Math.round((done+deferred)/tasks.length*100):0;
@@ -369,7 +373,7 @@ function render(data){
 
   tbody.innerHTML=html;
   verificarNovosFindings(data);
-  stats(tAC,tWOunicas,tWO,dWO,sWO,fAC,tDef);
+  stats(tAC,tWOunicas,tWO,dWO,sWO,fAC,tDef,tObs);
   document.getElementById('footer').textContent=`⏰ Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
   ajustarEscala(data.length);
 }
@@ -467,15 +471,16 @@ async function enviarObs(taskId){
   // Não precisa recarregar - o realtime vai atualizar
 }
 
-function stats(ac,wos,total,done,started,findings,defer){
+function stats(ac,wos,total,done,started,findings,defer,obs){
   const pend=total-done-started-defer;
   document.getElementById('k-ac').textContent=ac;
   document.getElementById('k-wo').textContent=wos;
   document.getElementById('k-total').textContent=total;
   document.getElementById('k-done').textContent=done;
+  document.getElementById('k-obs').textContent=obs;
+  document.getElementById('k-find').textContent=findings;
   document.getElementById('k-defer').textContent=defer;
   document.getElementById('k-pct').textContent=total?Math.round((done+defer)/total*100)+'%':'0%';
-  document.getElementById('k-find').textContent=findings;
   document.getElementById('s-done').textContent=`${done} Concluída${done!==1?'s':''}`;
   document.getElementById('s-and').textContent=`${started} Em Andamento`;
   document.getElementById('s-pend').textContent=`${pend} Não Iniciada${pend!==1?'s':''}`;
