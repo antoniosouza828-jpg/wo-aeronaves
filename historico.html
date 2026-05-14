@@ -25,13 +25,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .turno-header:hover{background:#263348}
 .turno-date{font-size:15px;font-weight:500;color:#f8fafc}
 .turno-sub{font-size:11px;color:#64748b;margin-top:2px}
-.turno-kpis{display:flex;gap:20px;flex-wrap:wrap}
-.tkpi{text-align:center}
-.tkpi-n{font-size:18px;font-weight:500;color:#f8fafc;line-height:1}
+.turno-kpis{display:flex;gap:14px;flex-wrap:wrap}
+.tkpi{text-align:center;min-width:50px}
+.tkpi-n{font-size:17px;font-weight:500;color:#f8fafc;line-height:1}
 .tkpi-l{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 .tkpi-n.verde{color:#4ade80}
 .tkpi-n.amarelo{color:#fbbf24}
 .tkpi-n.vermelho{color:#f87171}
+.tkpi-n.laranja{color:#fcd34d}
 .turno-arrow{font-size:12px;color:#475569;transition:transform .2s}
 .turno-arrow.open{transform:rotate(90deg)}
 
@@ -92,6 +93,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .empty{text-align:center;padding:4rem;color:#475569;font-size:14px}
 
 @media(max-width:700px){.turno-kpis{gap:12px}.tkpi-n{font-size:15px}}
+
+/* TÍTULO DAS SEÇÕES */
+.visao-dia-title{font-size:12px;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;padding:6px 4px}
+
+/* TOTAL GERAL */
+.total-geral{background:linear-gradient(135deg,#1e293b,#162032);border-radius:12px;border:0.5px solid #334155;padding:1.25rem;margin-top:1rem}
+.total-geral-title{font-size:13px;font-weight:500;color:#f8fafc;margin-bottom:1rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:0.5px solid #334155;padding-bottom:10px}
+.total-geral-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:700px){.total-geral-grid{grid-template-columns:repeat(2,1fr)}}
+.tg-item{text-align:center;background:#0f172a;border-radius:8px;padding:12px 6px;border:0.5px solid #1e293b}
+.tg-n{font-size:22px;font-weight:600;color:#f8fafc;line-height:1}
+.tg-n.verde{color:#4ade80}
+.tg-n.laranja{color:#fcd34d}
+.tg-n.vermelho{color:#f87171}
+.tg-l{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:5px}
+.tg-motivos-title{font-size:11px;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;margin-bottom:8px;border-top:0.5px solid #334155;padding-top:12px}
+.tg-motivo-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#0f172a;border-radius:6px;margin-bottom:5px;font-size:12px;color:#fcd34d;border-left:3px solid #d97706}
+.tg-motivo-count{font-weight:500;color:#f8fafc;background:#422006;padding:2px 9px;border-radius:10px;font-size:11px}
 </style>
 </head>
 <body>
@@ -132,7 +151,57 @@ async function load(){
       grid.innerHTML='<div class="empty">📭 Nenhum turno encerrado ainda.<br>Use o botão "Encerrar Turno" no painel para salvar o histórico.</div>';
       return;
     }
-    grid.innerHTML=data.map(t=>renderTurno(t)).join('');
+
+    // Calcular totais acumulados
+    let gWO=0,gWOconc=0,gTar=0,gTarConc=0,gDef=0,gFind=0,gAero=0;
+    const motivosGeral={};
+    data.forEach(t=>{
+      const aeros=t.turno_aeronaves||[];
+      gAero+=aeros.length;
+      gFind+=t.total_findings||0;
+      aeros.forEach(a=>{
+        const tasks=a.turno_tarefas||[];
+        const wos=[...new Set(tasks.map(tk=>tk.wo_number))];
+        gWO+=wos.length;
+        wos.forEach(wo=>{
+          const wt=tasks.filter(tk=>tk.wo_number===wo);
+          if(wt.every(tk=>tk.concluida||tk.deferida)) gWOconc++;
+        });
+        tasks.forEach(tk=>{
+          gTar++;
+          if(tk.concluida) gTarConc++;
+          if(tk.deferida){
+            gDef++;
+            const m=tk.defer_reason||'Não informado';
+            motivosGeral[m]=(motivosGeral[m]||0)+1;
+          }
+        });
+      });
+    });
+
+    const totalHtml=`<div class="total-geral">
+      <div class="total-geral-title">📊 Visão Geral do Acumulado (${data.length} turno${data.length!==1?'s':''})</div>
+      <div class="total-geral-grid">
+        <div class="tg-item"><div class="tg-n">${gAero}</div><div class="tg-l">Aeronaves</div></div>
+        <div class="tg-item"><div class="tg-n">${gWO}</div><div class="tg-l">WOs Total</div></div>
+        <div class="tg-item"><div class="tg-n verde">${gWOconc}</div><div class="tg-l">WOs Encerradas</div></div>
+        <div class="tg-item"><div class="tg-n">${gTar}</div><div class="tg-l">Tarefas Total</div></div>
+        <div class="tg-item"><div class="tg-n verde">${gTarConc}</div><div class="tg-l">Tarefas Concluídas</div></div>
+        <div class="tg-item"><div class="tg-n laranja">${gDef}</div><div class="tg-l">Deferidas</div></div>
+        <div class="tg-item"><div class="tg-n ${gFind>0?'vermelho':'verde'}">${gFind}</div><div class="tg-l">Findings</div></div>
+        <div class="tg-item"><div class="tg-n verde">${gTar?Math.round((gTarConc+gDef)/gTar*100):0}%</div><div class="tg-l">Eficiência</div></div>
+      </div>
+      ${Object.keys(motivosGeral).length?`
+      <div class="tg-motivos-title">⏸ Motivos de Deferimento Acumulados</div>
+      ${Object.entries(motivosGeral).sort((a,b)=>b[1]-a[1]).map(([m,n])=>`
+        <div class="tg-motivo-row">
+          <span>${m}</span>
+          <span class="tg-motivo-count">${n}x</span>
+        </div>`).join('')}`:''}
+    </div>`;
+
+    grid.innerHTML=`<div class="visao-dia-title">📅 Visão por Dia</div>`+
+      data.map(t=>renderTurno(t)).join('')+totalHtml;
   }catch(e){
     console.error('Erro ao carregar histórico:',e);
     grid.innerHTML=`<div class="empty">❌ Erro ao carregar: ${e.message||JSON.stringify(e)}<br><small style="color:#475569">Verifique o console (F12) para detalhes.</small></div>`;
@@ -150,6 +219,17 @@ function renderTurno(t){
   const aeros=t.turno_aeronaves||[];
   const dataFmt=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
 
+  // Calcular métricas reais do dia
+  let tarTotal=0,tarConc=0,tarDef=0;
+  aeros.forEach(a=>{
+    const tasks=a.turno_tarefas||[];
+    tasks.forEach(tk=>{
+      tarTotal++;
+      if(tk.concluida) tarConc++;
+      if(tk.deferida) tarDef++;
+    });
+  });
+
   const aerosHtml=aeros.map(a=>renderAero(t.id,a)).join('');
 
   return `<div class="turno-card">
@@ -160,8 +240,10 @@ function renderTurno(t){
       </div>
       <div class="turno-kpis">
         <div class="tkpi"><div class="tkpi-n">${t.total_wo||0}</div><div class="tkpi-l">WOs</div></div>
-        <div class="tkpi"><div class="tkpi-n verde">${t.wo_concluidas||0}</div><div class="tkpi-l">Concluídas</div></div>
-        <div class="tkpi"><div class="tkpi-n amarelo">${t.wo_pendentes||0}</div><div class="tkpi-l">Pendentes</div></div>
+        <div class="tkpi"><div class="tkpi-n verde">${t.wo_concluidas||0}</div><div class="tkpi-l">Encerradas</div></div>
+        <div class="tkpi"><div class="tkpi-n">${tarTotal}</div><div class="tkpi-l">Tarefas</div></div>
+        <div class="tkpi"><div class="tkpi-n verde">${tarConc}</div><div class="tkpi-l">Concluídas</div></div>
+        <div class="tkpi"><div class="tkpi-n laranja">${tarDef}</div><div class="tkpi-l">Deferidas</div></div>
         <div class="tkpi"><div class="tkpi-n ${t.total_findings>0?'vermelho':'verde'}">${t.total_findings||0}</div><div class="tkpi-l">Findings</div></div>
         <div class="tkpi"><div class="tkpi-n ${t.pct_conclusao>=80?'verde':t.pct_conclusao>=50?'amarelo':'vermelho'}">${t.pct_conclusao||0}%</div><div class="tkpi-l">Conclusão</div></div>
       </div>
