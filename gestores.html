@@ -74,17 +74,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .mtl-tst{background:#3b0764;color:#d8b4fe;padding:2px 6px;border-radius:6px;font-size:9px;font-weight:500}
 
 /* HISTÓRICO CARDS */
-.hist-list{display:flex;flex-direction:column;gap:8px}
-.hist-item{padding:10px 12px;background:#0f172a;border-radius:8px;border-left:3px solid #334155}
+.hist-list{display:flex;flex-direction:column;gap:10px}
+.hist-item{background:#0f172a;border-radius:10px;border-left:3px solid #334155;overflow:hidden}
 .hist-item.bom{border-left-color:#10b981}
 .hist-item.medio{border-left-color:#fbbf24}
 .hist-item.ruim{border-left-color:#f87171}
-.hist-date{font-size:11px;font-weight:500;color:#e2e8f0}
-.hist-meta{font-size:10px;color:#64748b;margin-top:2px}
-.hist-pct{font-size:18px;font-weight:600;float:right}
+.hist-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer}
+.hist-header:hover{background:#162032}
+.hist-date{font-size:12px;font-weight:500;color:#e2e8f0}
+.hist-sub{font-size:10px;color:#64748b;margin-top:2px}
+.hist-pct{font-size:20px;font-weight:600;min-width:48px;text-align:right}
 .hist-pct.bom{color:#4ade80}
 .hist-pct.medio{color:#fbbf24}
 .hist-pct.ruim{color:#f87171}
+.hist-body{display:none;padding:0 12px 10px;border-top:0.5px solid #1e293b}
+.hist-body.open{display:block}
+.hist-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #1e293b;font-size:11px}
+.hist-row:last-child{border-bottom:none}
+.hist-row-label{color:#64748b}
+.hist-row-val{color:#e2e8f0;font-weight:500;text-align:right}
+.hist-defer-item{background:#1a1000;border-radius:6px;padding:6px 8px;margin-top:4px;font-size:10px}
+.hist-defer-motivo{color:#fcd34d;font-weight:500}
+.hist-defer-tarefa{color:#64748b;margin-top:2px}
+.hist-total{background:#162032;border-radius:10px;border:0.5px solid #334155;padding:12px;margin-top:4px}
+.hist-total-title{font-size:11px;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.hist-total-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.hist-total-item{text-align:center;background:#0f172a;border-radius:6px;padding:6px}
+.hist-total-n{font-size:16px;font-weight:600;color:#f8fafc}
+.hist-total-l{font-size:9px;color:#64748b;text-transform:uppercase;margin-top:2px}
 
 /* FINDINGS ATIVOS */
 .find-list{display:flex;flex-direction:column;gap:6px}
@@ -374,22 +391,104 @@ function renderGrafico(data){
 async function loadHistorico(){
   try{
     const{data}=await sb.from('turnos')
-      .select('data_turno,encerrado_em,total_wo,wo_concluidas,pct_conclusao,total_findings')
-      .order('criado_em',{ascending:false}).limit(5);
+      .select('*,turno_aeronaves(*,turno_tarefas!turno_aeronave_id(*))')
+      .order('criado_em',{ascending:false}).limit(10);
     const list=document.getElementById('hist-list');
     if(!data?.length){list.innerHTML='<div class="empty">Sem histórico ainda</div>';return;}
-    list.innerHTML=data.map(t=>{
-      const p=t.pct_conclusao||0;
+
+    let gTotalWO=0,gConcWO=0,gTotalTar=0,gConcTar=0,gDefTar=0,gFindings=0;
+    const motivosGeral={};
+
+    const itensHtml=data.map((t,idx)=>{
+      const aeros=t.turno_aeronaves||[];
+      const wosU=new Set(),wosConcU=new Set();
+      let tTar=0,tConc=0,tDefer=0;
+      const defs=[];
+      const motivosCount={};
+
+      aeros.forEach(a=>{
+        const tasks=a.turno_tarefas||[];
+        const wos=[...new Set(tasks.map(tk=>tk.wo_number))];
+        wos.forEach(wo=>{
+          wosU.add(a.id+wo);
+          if(tasks.filter(tk=>tk.wo_number===wo).every(tk=>tk.concluida||tk.deferida))
+            wosConcU.add(a.id+wo);
+        });
+        tasks.forEach(tk=>{
+          tTar++;
+          if(tk.concluida)tConc++;
+          if(tk.deferida){
+            tDefer++;
+            const m=tk.defer_reason||'Motivo não informado';
+            motivosCount[m]=(motivosCount[m]||0)+1;
+            motivosGeral[m]=(motivosGeral[m]||0)+1;
+            defs.push({m,wo:tk.wo_number,tar:tk.descricao,ac:a.codigo});
+          }
+        });
+      });
+
+      const totalWO=wosU.size,concWO=wosConcU.size;
+      gTotalWO+=totalWO;gConcWO+=concWO;gTotalTar+=tTar;gConcTar+=tConc;gDefTar+=tDefer;gFindings+=t.total_findings||0;
+
+      const p=tTar?Math.round((tConc+tDefer)/tTar*100):0;
       const cls=p>=80?'bom':p>=50?'medio':'ruim';
-      const d=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}):'—';
-      const enc=t.encerrado_em?new Date(t.encerrado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+      const d=t.data_turno?new Date(t.data_turno+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+      const enc=t.encerrado_em?new Date(t.encerrado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):null;
+
+      const defHtml=defs.length?`<div style="margin-top:8px">
+        <div style="font-size:10px;color:#fcd34d;font-weight:500;margin-bottom:4px">⏸ Deferimentos:</div>
+        ${defs.map(d=>`<div class="hist-defer-item">
+          <div class="hist-defer-motivo">${d.m}</div>
+          <div class="hist-defer-tarefa">✈ ${d.ac} · WO ${d.wo} · ${(d.tar||'').substring(0,55)}</div>
+        </div>`).join('')}</div>`:'';
+
+      const motivHtml=Object.keys(motivosCount).length?
+        Object.entries(motivosCount).map(([m,n])=>`
+          <div class="hist-row"><span class="hist-row-label" style="color:#fcd34d">⏸ ${m}</span>
+          <span class="hist-row-val">${n} tarefa${n!==1?'s':''}</span></div>`).join(''):'';
+
       return `<div class="hist-item ${cls}">
-        <span class="hist-pct ${cls}">${p}%</span>
-        <div class="hist-date">${d} ${enc?'· enc. '+enc:''}</div>
-        <div class="hist-meta">${t.wo_concluidas}/${t.total_wo} WOs · ${t.total_findings} finding${t.total_findings!==1?'s':''}</div>
+        <div class="hist-header" onclick="toggleHist('hb-${idx}')">
+          <div>
+            <div class="hist-date">📅 ${d}</div>
+            <div class="hist-sub">Enc. ${enc||'—'} · ${aeros.length} aeronave${aeros.length!==1?'s':''}</div>
+          </div>
+          <div class="hist-pct ${cls}">${p}%</div>
+        </div>
+        <div class="hist-body" id="hb-${idx}">
+          <div class="hist-row"><span class="hist-row-label">WOs encerradas</span><span class="hist-row-val">${concWO}/${totalWO}</span></div>
+          <div class="hist-row"><span class="hist-row-label">Tarefas concluídas</span><span class="hist-row-val" style="color:#4ade80">${tConc}/${tTar}</span></div>
+          <div class="hist-row"><span class="hist-row-label">Tarefas deferidas</span><span class="hist-row-val" style="color:${tDefer>0?'#fcd34d':'#4ade80'}">${tDefer}</span></div>
+          <div class="hist-row"><span class="hist-row-label">Findings</span><span class="hist-row-val" style="color:${t.total_findings>0?'#f87171':'#4ade80'}">${t.total_findings||0}</span></div>
+          ${motivHtml}${defHtml}
+        </div>
       </div>`;
     }).join('');
-  }catch(e){}
+
+    const totalHtml=data.length>=1?`<div class="hist-total">
+      <div class="hist-total-title">📊 Total Geral (${data.length} turno${data.length!==1?'s':''})</div>
+      <div class="hist-total-grid">
+        <div class="hist-total-item"><div class="hist-total-n">${gTotalWO}</div><div class="hist-total-l">WOs Total</div></div>
+        <div class="hist-total-item"><div class="hist-total-n" style="color:#4ade80">${gConcWO}</div><div class="hist-total-l">Encerradas</div></div>
+        <div class="hist-total-item"><div class="hist-total-n">${gTotalTar}</div><div class="hist-total-l">Tarefas Total</div></div>
+        <div class="hist-total-item"><div class="hist-total-n" style="color:#4ade80">${gConcTar}</div><div class="hist-total-l">Concluídas</div></div>
+        <div class="hist-total-item"><div class="hist-total-n" style="color:#fcd34d">${gDefTar}</div><div class="hist-total-l">Deferidas</div></div>
+        <div class="hist-total-item"><div class="hist-total-n" style="color:#f87171">${gFindings}</div><div class="hist-total-l">Findings</div></div>
+      </div>
+      ${Object.keys(motivosGeral).length?`<div style="margin-top:10px;font-size:10px;color:#64748b;margin-bottom:6px">Motivos acumulados:</div>
+        ${Object.entries(motivosGeral).sort((a,b)=>b[1]-a[1]).map(([m,n])=>`
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:0.5px solid #1e293b">
+            <span style="color:#fcd34d">⏸ ${m}</span><span style="color:#e2e8f0;font-weight:500">${n}x</span>
+          </div>`).join('')}`:''}
+    </div>`:'';
+
+    list.innerHTML=itensHtml+totalHtml;
+  }catch(e){console.error('hist err',e);}
+}
+
+function toggleHist(id){
+  const el=document.getElementById(id);
+  if(el)el.classList.toggle('open');
 }
 
 // REALTIME
