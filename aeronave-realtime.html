@@ -52,6 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .b-started{background:#fef3c7;color:#92400e}
 .b-done{background:#dcfce7;color:#166534}
 .b-find{background:#fee2e2;color:#991b1b}
+.b-deferred{background:#fef9c3;color:#854d0e;border:1px solid #fde68a}
 
 /* ACTIONS */
 .task-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 .875rem .625rem}
@@ -60,6 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .act:disabled{opacity:.4;cursor:default}
 .act.done-btn{background:#dcfce7;color:#166534;border-color:#bbf7d0}
 .act.find-btn{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+.act.defer-btn{background:#fef3c7;color:#92400e;border-color:#fde68a}
 
 /* MTL */
 .mtl-section{padding:0 .875rem .625rem}
@@ -105,6 +107,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .loading{text-align:center;padding:3rem 1rem;color:#64748b}
 .spinner{width:28px;height:28px;border:2px solid #e2e8f0;border-top-color:#1e3a8a;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* DEFER REASONS */
+.defer-reason-btn{width:100%;padding:11px 14px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:10px;font-size:13px;text-align:left;cursor:pointer;color:#374151;transition:all .15s}
+.defer-reason-btn:active{transform:scale(.98)}
+.defer-reason-btn.selected{background:#fef3c7;border-color:#fde68a;color:#92400e;font-weight:500}
+.task-card.deferred{background:#fffbeb;border-color:#fde68a}
 </style>
 </head>
 <body>
@@ -117,6 +125,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     <div class="modal-btns">
       <button class="modal-btn modal-confirm" onclick="confirmarFinding()">Registrar</button>
       <button class="modal-btn modal-cancel" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DEFERIMENTO -->
+<div class="modal-bg" id="modal-defer">
+  <div class="modal-box">
+    <div class="modal-title">⏸ Diferir Tarefa</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Selecione o motivo do deferimento:</p>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px" id="defer-reasons">
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'Falta de Material (MTL)')">📦 Falta de Material (MTL)</button>
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'Condições Meteorológicas')">🌧 Condições Meteorológicas</button>
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'Falta de GSE')">🚜 Falta de GSE</button>
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'Falta de Ferramental')">🔧 Falta de Ferramental</button>
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'HH Insuficiente (Homem/Hora)')">👷 HH Insuficiente</button>
+      <button class="defer-reason-btn" onclick="selecionarMotivo(this,'Outro')">✏️ Outro</button>
+    </div>
+    <input id="defer-obs" class="obs-input" placeholder="Observação adicional (opcional)" style="width:100%;margin-bottom:12px"/>
+    <div class="modal-btns">
+      <button class="modal-btn modal-confirm" style="background:#d97706" onclick="confirmarDefer()">⏸ Confirmar Deferimento</button>
+      <button class="modal-btn modal-cancel" onclick="fecharModalDefer()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -243,7 +272,7 @@ async function carregarTasks() {
 }
 
 function renderTasks(tasks) {
-  const done  = tasks.filter(t=>t.completed).length;
+  const done  = tasks.filter(t=>t.completed||t.deferred).length;
   const total = tasks.length;
   const pct   = total ? Math.round(done/total*100) : 0;
   document.getElementById('prog-pct').textContent = `${pct}%`;
@@ -264,10 +293,12 @@ function renderTasks(tasks) {
 
   const cardsHtml = tasks.map(task => {
     const hasFind = task.has_finding || (task.findings||[]).some(f=>!f.resolved);
-    const cls = task.completed ? 'completed' : hasFind ? 'finding' : '';
+    const isDef = task.deferred;
+    const cls = task.completed ? 'completed' : isDef ? 'deferred' : hasFind ? 'finding' : '';
     const badges = [
-      task.started && !task.completed ? `<span class="badge b-started">▶ Iniciada</span>` : '',
+      task.started && !task.completed && !isDef ? `<span class="badge b-started">▶ Iniciada</span>` : '',
       task.completed ? `<span class="badge b-done">✓ Concluída</span>` : '',
+      isDef ? `<span class="badge b-deferred">⏸ Deferida · ${task.defer_reason||'—'}</span>` : '',
       hasFind ? `<span class="badge b-find">⚠ Finding</span>` : ''
     ].join('');
 
@@ -295,11 +326,12 @@ function renderTasks(tasks) {
 
       <div class="task-actions">
         <button class="act done-btn"
-          ${!task.started||task.completed?'disabled':''} 
+          ${!task.started||task.completed||isDef?'disabled':''} 
           onclick="concluir('${task.id}')">
           ✓ Concluir
         </button>
-        <button class="act find-btn" onclick="abrirFinding('${task.id}')">⚠ Finding</button>
+        <button class="act find-btn" ${task.completed||isDef?'disabled':''} onclick="abrirFinding('${task.id}')">⚠ Finding</button>
+        <button class="act defer-btn" ${task.completed||isDef?'disabled':''} onclick="abrirDefer('${task.id}')">⏸ Diferir</button>
         <button class="act" onclick="toggleObs('obs-${task.id}',this)">📝 Obs ${obs.length?`(${obs.length})`:''}</button>
         ${hasFind ? `<button class="act" style="grid-column:1/-1;background:#dcfce7;color:#166534;border-color:#bbf7d0;font-size:12px" onclick="resolverFinding('${task.id}')">✅ Resolver Finding</button>` : ''}
       </div>
@@ -424,7 +456,6 @@ async function confirmarFinding() {
   const hora = agora();
   await sb.from('tasks').update({has_finding:true}).eq('id', findingTaskId);
   await sb.from('findings').insert([{task_id:findingTaskId, description:desc}]);
-  // Obs automática com horário
   await sb.from('observations').insert([{
     task_id: findingTaskId,
     text: `[Finding] ${desc}`,
@@ -433,6 +464,49 @@ async function confirmarFinding() {
   fecharModal();
   await carregarTasks();
 }
+
+// ─── DEFERIMENTO ────────────────────────────────────────────
+let deferTaskId = null;
+let deferMotivoSel = null;
+
+function abrirDefer(taskId) {
+  deferTaskId = taskId;
+  deferMotivoSel = null;
+  document.getElementById('defer-obs').value = '';
+  document.querySelectorAll('.defer-reason-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('modal-defer').classList.add('show');
+}
+
+function fecharModalDefer() {
+  document.getElementById('modal-defer').classList.remove('show');
+  deferTaskId = null; deferMotivoSel = null;
+}
+
+function selecionarMotivo(btn, motivo) {
+  document.querySelectorAll('.defer-reason-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  deferMotivoSel = motivo;
+}
+
+async function confirmarDefer() {
+  if (!deferMotivoSel) { alert('Selecione o motivo do deferimento!'); return; }
+  const obs = document.getElementById('defer-obs').value.trim();
+  const hora = agora();
+  const motivo = deferMotivoSel + (obs ? ` — ${obs}` : '');
+  await sb.from('tasks').update({
+    deferred: true,
+    defer_reason: motivo,
+    started: true
+  }).eq('id', deferTaskId);
+  await sb.from('observations').insert([{
+    task_id: deferTaskId,
+    text: `[Deferida] ${motivo}`,
+    recorded_at: hora
+  }]);
+  fecharModalDefer();
+  await carregarTasks();
+}
+
 
 async function addObs(taskId) {
   const inp  = document.getElementById(`inp-${taskId}`);

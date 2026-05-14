@@ -65,6 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .b-done{background:#052e16;color:#4ade80}
 .b-pend{background:#1e293b;color:#475569;border:0.5px solid #334155}
 .b-find{background:#450a0a;color:#f87171}
+.b-deferred{background:#422006;color:#fcd34d;border:0.5px solid #92400e}
 .mtl-ok{background:#052e16;color:#4ade80;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
 .mtl-nhe{background:#422006;color:#fbbf24;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
 .mtl-tst{background:#3b0764;color:#d8b4fe;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:500}
@@ -216,12 +217,13 @@ function renderWO(task){
     ?finds.map(f=>`<div class="find-row ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('')
     :'';
 
-  return `<div class="wo-item ${task.concluida?'concluida':task.has_finding?'finding':''}">
+  return `<div class="wo-item ${task.concluida?'concluida':task.deferida?'concluida':task.has_finding?'finding':''}">
     <div class="wo-top">
       <span class="wo-num">WO ${task.wo_number}</span>
-      ${task.concluida?'<span class="badge b-done">✓ Concluída</span>':task.has_finding?'<span class="badge b-find">⚠ Finding</span>':'<span class="badge b-pend">Pendente</span>'}
+      ${task.concluida?'<span class="badge b-done">✓ Concluída</span>':task.deferida?`<span class="badge b-deferred">⏸ Deferida</span>`:task.has_finding?'<span class="badge b-find">⚠ Finding</span>':'<span class="badge b-pend">Pendente</span>'}
       ${mtlB}
       ${task.concluida_em?`<span style="font-size:10px;color:#64748b;margin-left:auto">Concluída às ${new Date(task.concluida_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
+      ${task.deferida&&task.defer_reason?`<span style="font-size:10px;color:#fcd34d;margin-left:auto">Motivo: ${task.defer_reason}</span>`:''}
     </div>
     ${task.descricao?`<div class="wo-desc">${task.descricao}</div>`:''}
     ${findHtml?`<div class="find-section">${findHtml}</div>`:''}
@@ -307,7 +309,7 @@ async function exportarExcel(btn){
           const finds=(task.findings||[]).map(f=>(f.resolved?'[Resolvido] ':'')+f.description).join(' | ');
           const concHora=task.concluida_em?new Date(task.concluida_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
           if(obs.length===0){
-            detalheRows.push([dTurno,encTurno,a.codigo,a.tecnico,task.wo_number,task.descricao,task.concluida?'Concluída':'Pendente',task.material||'',finds,concHora,'','']);
+            detalheRows.push([dTurno,encTurno,a.codigo,a.tecnico,task.wo_number,task.descricao,task.concluida?'Concluída':task.deferida?'Deferida':'Pendente',task.material||'',finds,concHora,'','']);
           } else {
             obs.forEach((o,i)=>{
               detalheRows.push([
@@ -317,7 +319,7 @@ async function exportarExcel(btn){
                 i===0?a.tecnico:'',
                 i===0?task.wo_number:'',
                 i===0?task.descricao:'',
-                i===0?(task.concluida?'Concluída':'Pendente'):'',
+                i===0?(task.concluida?'Concluída':task.deferida?'Deferida':'Pendente'):'',
                 i===0?(task.material||''):'',
                 i===0?finds:'',
                 i===0?concHora:'',
@@ -463,7 +465,7 @@ async function exportarPDF(btn){
           rows.push([
             task.wo_number||'',
             (task.descricao||'').substring(0,60)+(task.descricao?.length>60?'...':''),
-            task.concluida?'Concluida':'Pendente',
+            task.concluida?'Concluida':task.deferida?'Deferida':'Pendente',
             task.material||'—',
             finds||'—',
             obsText||'—'

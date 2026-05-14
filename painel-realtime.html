@@ -72,6 +72,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .b-started{background:#422006;color:#fbbf24}
 .b-pending{background:#1e293b;color:#475569;border:0.5px solid #334155}
 .b-finding{background:#450a0a;color:#f87171;animation:blink 1.5s infinite;border:0.5px solid #7f1d1d}
+.b-deferred{background:#422006;color:#fcd34d;border:0.5px solid #92400e}
 .mtl{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500}
 .mtl-ok{background:#052e16;color:#4ade80}
 .mtl-nhe{background:#422006;color:#fbbf24}
@@ -233,12 +234,13 @@ function render(data){
   const html=data.map(ac=>{
     const tasks=ac.tasks||[];
     const done=tasks.filter(t=>t.completed).length;
-    const started=tasks.filter(t=>t.started&&!t.completed).length;
+    const deferred=tasks.filter(t=>t.deferred).length;
+    const started=tasks.filter(t=>t.started&&!t.completed&&!t.deferred).length;
     const hasFind=tasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
     tWO+=tasks.length; dWO+=done; sWO+=started;
     if(hasFind)fAC++;
 
-    const pct=tasks.length?Math.round(done/tasks.length*100):0;
+    const pct=tasks.length?Math.round((done+deferred)/tasks.length*100):0;
     // WOs únicas (sem repetição)
     const wosUnicas=[...new Set(tasks.map(t=>t.wo_number))];
     tWOunicas+=wosUnicas.length;
@@ -267,28 +269,39 @@ function render(data){
 
     const detailHtml=Object.entries(woGrupos).map(([woNum, woTasks])=>{
       // Status geral do grupo: concluído só se todas concluídas
-      const todoConcluido=woTasks.every(t=>t.completed);
+      const todoConcluido=woTasks.every(t=>t.completed||t.deferred);
+      const algumDeferido=woTasks.some(t=>t.deferred);
       const algumFind=woTasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
-      const algumStarted=woTasks.some(t=>t.started&&!t.completed);
+      const algumStarted=woTasks.some(t=>t.started&&!t.completed&&!t.deferred);
       const doneCnt=woTasks.filter(t=>t.completed).length;
+      const defCnt=woTasks.filter(t=>t.deferred).length;
 
-      const woSt=todoConcluido?`<span class="badge b-done" style="font-size:9px;padding:2px 7px">✓ Concluída</span>`:algumFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`:algumStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`:`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
+      const woSt=todoConcluido
+        ?(algumDeferido
+          ?`<span class="badge b-deferred" style="font-size:9px;padding:2px 7px">⏸ Encerrada c/ deferimento</span>`
+          :`<span class="badge b-done" style="font-size:9px;padding:2px 7px">✓ Concluída</span>`)
+        :algumFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`
+        :algumStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`
+        :`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
 
       // Listar cada sub-tarefa com obs
       const subTarefas=woTasks.map(task=>{
         const obs=(task.observations||[]).sort((a,b)=>(a.recorded_at||'').localeCompare(b.recorded_at||''));
         const finds=(task.findings||[]);
         const tDone=task.completed;
+        const tDef=task.deferred;
         const tFind=task.has_finding||(finds).some(f=>!f.resolved);
         const tMtl=task.material;
         const tMb=tMtl==='OK'?`<span class="mtl mtl-ok" style="font-size:9px">OK</span>`:tMtl==='NHE'?`<span class="mtl mtl-nhe" style="font-size:9px">NHE</span>`:tMtl==='TST'?`<span class="mtl mtl-tst" style="font-size:9px">TST</span>`:'';
-        const tSt=tDone?`<span style="font-size:9px;color:#4ade80">✓</span>`:tFind?`<span style="font-size:9px;color:#f87171">⚠</span>`:task.started?`<span style="font-size:9px;color:#fbbf24">▶</span>`:`<span style="font-size:9px;color:#475569">○</span>`;
+        const tSt=tDone?`<span style="font-size:9px;color:#4ade80">✓</span>`:tDef?`<span style="font-size:9px;color:#fcd34d" title="${task.defer_reason||''}">⏸</span>`:tFind?`<span style="font-size:9px;color:#f87171">⚠</span>`:task.started?`<span style="font-size:9px;color:#fbbf24">▶</span>`:`<span style="font-size:9px;color:#475569">○</span>`;
+        const borderCol=tDone?'#10b981':tDef?'#d97706':tFind?'#f87171':'#334155';
         const findHtml=finds.map(f=>`<div class="finding-item ${f.resolved?'resolved':'open'}">${f.resolved?'✓':'⚠'} ${f.description||''}</div>`).join('');
         const obsHtml=obs.length?obs.map(o=>`<div class="obs-entry"><div class="obs-time">${o.recorded_at||'--:--'}</div><div class="obs-text ${(o.text||'').startsWith('[Líder]')?'lider':''}">${o.text||''}</div></div>`).join(''):`<div class="obs-empty">Sem observações</div>`;
-        return `<div style="padding:8px 0 8px 12px;border-left:2px solid ${tDone?'#10b981':tFind?'#f87171':'#334155'};margin:6px 0">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            ${tSt} <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
-          </div>
+        return `<div style="padding:8px 0 8px 12px;border-left:2px solid ${borderCol};margin:6px 0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+              ${tSt} <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
+              ${tDef?`<span style="font-size:9px;color:#fcd34d">⏸ ${task.defer_reason||''}</span>`:''}
+            </div>
           ${findHtml?`<div style="margin-bottom:4px">${findHtml}</div>`:''}
           <div class="obs-area">
             <div class="obs-label">Observações</div>
@@ -559,7 +572,7 @@ async function salvarTurno(){
       // WO concluída = todas as tarefas da WO concluídas
       wosU.forEach(wo=>{
         const woTasks=tasks.filter(t=>t.wo_number===wo);
-        if(woTasks.every(t=>t.completed)) dWO++;
+        if(woTasks.every(t=>t.completed||t.deferred)) dWO++;
       });
       fCount+=tasks.filter(t=>t.has_finding).length;
     });
@@ -585,7 +598,7 @@ async function salvarTurno(){
     for(const ac of aeros){
       const tasks=ac.tasks||[];
       const wosU=[...new Set(tasks.map(t=>t.wo_number))];
-      const woConcluidas=wosU.filter(wo=>tasks.filter(t=>t.wo_number===wo).every(t=>t.completed)).length;
+      const woConcluidas=wosU.filter(wo=>tasks.filter(t=>t.wo_number===wo).every(t=>t.completed||t.deferred)).length;
       const hasFind=tasks.some(t=>t.has_finding);
       const mtlOrd=['TST','NHE','OK',null];
       const mtlVals=tasks.map(t=>t.material);
@@ -622,6 +635,8 @@ async function salvarTurno(){
           descricao:task.description,
           concluida:task.completed||false,
           has_finding:task.has_finding||false,
+          deferida:task.deferred||false,
+          defer_reason:task.defer_reason||null,
           material:task.material,
           iniciada_em:task.started_at,
           concluida_em:task.completed_at,
