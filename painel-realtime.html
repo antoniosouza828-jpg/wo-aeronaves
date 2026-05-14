@@ -187,16 +187,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     <table class="tbl">
       <thead>
         <tr>
-          <th style="min-width:150px">Aeronave</th>
-          <th>Status Tarefas</th>
+          <th style="min-width:130px">Aeronave</th>
+          <th>Equipe</th>
           <th>WO</th>
+          <th>Status Tarefas</th>
           <th style="min-width:120px">Progresso</th>
           <th>MTL</th>
-          <th>Status</th>
+          <th>Status WO</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Conectando...</p></div></td></tr>
+        <tr><td colspan="7"><div class="loading"><div class="spinner"></div><p>Conectando...</p></div></td></tr>
       </tbody>
     </table>
     <div class="tbl-footer" id="footer">—</div>
@@ -224,14 +225,14 @@ async function load(){
   }catch(e){
     setConn(false);
     document.getElementById('tbody').innerHTML=
-      `<tr><td colspan="6"><div class="empty">❌ Erro: ${e.message}</div></td></tr>`;
+      `<tr><td colspan="7"><div class="empty">❌ Erro: ${e.message}</div></td></tr>`;
   }
 }
 
 function render(data){
   const tbody=document.getElementById('tbody');
   if(!data.length){
-    tbody.innerHTML=`<tr><td colspan="6"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7"><div class="empty">📋 Nenhuma WO carregada.<br>Importe uma planilha Excel para começar.</div></td></tr>`;
     stats(0,0,0,0,0,0,0);return;
   }
 
@@ -345,13 +346,11 @@ function render(data){
         <div style="display:flex;align-items:center;gap:6px">
           <span class="arrow ${isOpen?'open':''}" id="arrow-${ac.id}">▶</span>
           <span class="ac-code">${ac.code}</span>
-          <span class="ac-tech">· 👤 ${ac.technician||'—'}</span>
         </div>
       </td>
-      <td>
-        <span class="wo-count">${done}/${tasks.length}</span>
-      </td>
+      <td><span class="ac-tech">👤 ${ac.technician||'—'}</span></td>
       <td><div class="wo-list" title="${woNames}">${woNames||'—'}</div></td>
+      <td><span class="wo-count">${done}/${tasks.length}</span></td>
       <td>
         <div class="prog-cell">
           <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
@@ -362,7 +361,7 @@ function render(data){
       <td>${sh}</td>
     </tr>
     <tr class="detail-row" id="detail-${ac.id}" style="display:${isOpen?'table-row':'none'}">
-      <td colspan="6">
+      <td colspan="7">
         <div class="detail-inner">${detailHtml}</div>
       </td>
     </tr>`;
@@ -490,7 +489,7 @@ function setConn(on){
 
 async function importar(ev){
   const file=ev.target.files[0];if(!file)return;
-  document.getElementById('tbody').innerHTML=`<tr><td colspan="6"><div class="loading"><div class="spinner"></div><p>Importando planilha...</p></div></td></tr>`;
+  document.getElementById('tbody').innerHTML=`<tr><td colspan="7"><div class="loading"><div class="spinner"></div><p>Importando planilha...</p></div></td></tr>`;
   const reader=new FileReader();
   reader.onload=async e=>{
     try{
