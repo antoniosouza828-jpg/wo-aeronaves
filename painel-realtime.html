@@ -302,7 +302,9 @@ function render(data){
         }).join(''):`<div class="obs-empty">Sem mensagens</div>`;
         return `<div style="padding:8px 0 8px 12px;border-left:2px solid ${borderCol};margin:6px 0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-              ${tSt} <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
+              ${tSt}
+              ${task.task_code?`<span style="font-size:9px;color:#60a5fa;font-weight:500;background:#1e3a5f;padding:1px 5px;border-radius:4px">${task.task_code}</span>`:''}
+              <span style="font-size:10px;color:#94a3b8">${task.description||'—'}</span> ${tMb}
               ${tDef?`<span style="font-size:9px;color:#fcd34d">⏸ ${task.defer_reason||''}</span>`:''}
             </div>
           ${findHtml?`<div style="margin-bottom:4px">${findHtml}</div>`:''}
@@ -544,25 +546,31 @@ function parsePDFPernoite(linhas){
     const wo=resto[0];
     if(!/^\d{5,7}$/.test(wo))return;
 
+    // Extrair task_code: token(s) logo após WO antes da descrição
+    // Prefixo curto puro (MEL, GMM, HM) → task_code = prefixo + próximo token
+    // Caso contrário → primeiro token é o task_code
+    let taskCode='',descStart=1;
+    const t1=resto[1]||'',t2=resto[2]||'';
+    if(/^[A-Z]{2,4}$/.test(t1)&&!/\d/.test(t1)&&!PRIOS.includes(t1)){
+      taskCode=t2?`${t1} ${t2}`:t1; descStart=3;
+    } else if(t1){ taskCode=t1; descStart=2; }
+
     // Encontrar prioridade para separar descrição dos números finais
     let prioIdx=-1,prio='';
-    for(let i=1;i<resto.length;i++){
+    for(let i=descStart;i<resto.length;i++){
       if(PRIOS.includes(resto[i])){prioIdx=i;prio=resto[i];break;}
     }
 
-    // Descrição = tudo entre WO e prioridade (ou até os números finais)
     let desc;
-    if(prioIdx>1){
-      desc=resto.slice(1,prioIdx).join(' ');
+    if(prioIdx>descStart){
+      desc=resto.slice(descStart,prioIdx).join(' ');
     } else {
-      // Sem prioridade reconhecida — pegar até o primeiro número isolado
-      const numIdx=resto.findIndex((t,i)=>i>0&&/^\d+([,.]?\d*)$/.test(t));
-      desc=numIdx>1?resto.slice(1,numIdx).join(' '):resto.slice(1).join(' ');
+      const numIdx=resto.findIndex((t,i)=>i>=descStart&&/^\d+([,.]?\d*)$/.test(t));
+      desc=numIdx>=descStart?resto.slice(descStart,numIdx).join(' '):resto.slice(descStart).join(' ');
     }
 
     if(!map[ac])map[ac]={code:ac,technician:'—',tasks:[]};
-    const descFinal=prio?`[${prio}] ${desc}`:desc;
-    map[ac].tasks.push({wo_number:wo,description:descFinal.trim()});
+    map[ac].tasks.push({wo_number:wo,task_code:taskCode,description:desc.trim(),priority:prio});
   });
 
   return Object.values(map);
@@ -609,7 +617,7 @@ async function importar(ev){
     for(const ac of Object.values(acMap)){
       const{data:ins}=await sb.from('aircrafts').insert([{code:ac.code,technician:ac.technician}]).select();
       if(ins?.[0]&&ac.tasks.length)
-        await sb.from('tasks').insert(ac.tasks.map(t=>({aircraft_id:ins[0].id,wo_number:t.wo_number,description:t.description})));
+        await sb.from('tasks').insert(ac.tasks.map(t=>({aircraft_id:ins[0].id,wo_number:t.wo_number,task_code:t.task_code||null,description:t.description})));
     }
     await load();
     const tot=Object.values(acMap).reduce((s,a)=>s+a.tasks.length,0);
@@ -729,6 +737,7 @@ async function salvarTurno(){
           turno_id:turnoId,
           turno_aeronave_id:aeroId,
           wo_number:task.wo_number,
+          task_code:task.task_code||null,
           descricao:task.description,
           concluida:task.completed||false,
           has_finding:task.has_finding||false,
