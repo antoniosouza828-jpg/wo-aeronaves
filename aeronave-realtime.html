@@ -418,34 +418,18 @@ async function iniciarWO() {
 }
 
 async function concluir(taskId) {
-  // Marcar WO como concluída e limpar flag de finding
   await sb.from('tasks').update({
     completed: true,
     completed_at: new Date().toISOString(),
     has_finding: false
   }).eq('id', taskId);
-  // Resolver todos os findings desta task automaticamente
   await sb.from('findings').update({ resolved: true }).eq('task_id', taskId);
-  // Registrar obs automática com horário
-  await sb.from('observations').insert([{
-    author: 'Técnico',
-    task_id: taskId,
-    text: 'Tarefa concluída. Findings resolvidos.',
-    recorded_at: agora()
-  }]);
   await carregarTasks();
 }
 
 async function resolverFinding(taskId) {
-  const hora = agora();
   await sb.from('tasks').update({ has_finding: false }).eq('id', taskId);
   await sb.from('findings').update({ resolved: true }).eq('task_id', taskId);
-  await sb.from('observations').insert([{
-    author: 'Técnico',
-    task_id: taskId,
-    text: 'Finding resolvido.',
-    recorded_at: hora
-  }]);
   await carregarTasks();
 }
 
