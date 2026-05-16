@@ -41,6 +41,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .start-btn.active{background:#065f46;color:#fff}
 
 /* TASK CARD */
+.wo-group{margin-bottom:12px;border-radius:12px;overflow:hidden;border:0.5px solid #e2e8f0}
+.wo-group-header{background:#f0f9ff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:0.5px solid #bae6fd}
+.wo-group-num{font-size:13px;font-weight:600;color:#0369a1}
+.wo-group-actions{display:flex;gap:6px;flex-wrap:wrap}
+.wo-group .task-card{border-radius:0;border:none;border-bottom:0.5px solid #f1f5f9;margin-bottom:0}
+.wo-group .task-card:last-child{border-bottom:none}
 .task-card{background:#fff;border-radius:12px;border:0.5px solid #e2e8f0;margin-bottom:.875rem;overflow:hidden;transition:border-color .2s}
 .task-card.finding{border-left:3px solid #dc2626;border-radius:0 12px 12px 0}
 .task-card.completed{opacity:.6}
@@ -63,6 +69,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .act.find-btn{background:#fee2e2;color:#991b1b;border-color:#fecaca}
 .act.defer-btn{background:#fef3c7;color:#92400e;border-color:#fde68a}
 .act.obs-btn{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.act.iio-btn{background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe}
+.act.iio-btn.ativo{background:#7e22ce;color:#fff;border-color:#6b21a8}
+.act.runap-btn{background:#ecfeff;color:#164e63;border-color:#a5f3fc}
+.act.runap-btn.ativo{background:#0e7490;color:#fff;border-color:#164e63}
 
 /* MTL */
 .mtl-section{padding:0 .875rem .625rem}
@@ -303,7 +313,34 @@ function renderTasks(tasks) {
       ${isStarted ? '✓ Trabalho iniciado' : '▶ Iniciar trabalho na aeronave'}
     </button>`;
 
-  const cardsHtml = tasks.map(task => {
+  const cardsHtml = (() => {
+    // Agrupar tasks por WO
+    const grupos = {};
+    tasks.forEach(t => {
+      if (!grupos[t.wo_number]) grupos[t.wo_number] = [];
+      grupos[t.wo_number].push(t);
+    });
+
+    return Object.entries(grupos).map(([woNum, woTasks]) => {
+      const woHasIIO   = woTasks.some(t => t.has_iio);
+      const woHasRunap = woTasks.some(t => t.has_runap);
+
+      const woHeader = `
+        <div class="wo-group-header">
+          <div class="wo-group-num">WO ${woNum}</div>
+          <div class="wo-group-actions">
+            <button class="act iio-btn ${woHasIIO?'ativo':''}"
+              onclick="toggleIIO('${woNum}','${curAC.id}',${woHasIIO})">
+              🔍 IIO${woHasIIO?' · ATIVO':''}
+            </button>
+            <button class="act runap-btn ${woHasRunap?'ativo':''}"
+              onclick="toggleRunap('${woNum}','${curAC.id}',${woHasRunap})">
+              ✈ RUNAP${woHasRunap?' · ATIVO':''}
+            </button>
+          </div>
+        </div>`;
+
+      const taskCards = woTasks.map(task => {
     const hasFind = task.has_finding || (task.findings||[]).some(f=>!f.resolved);
     const isDef = task.deferred;
     const cls = task.completed ? 'completed' : isDef ? 'deferred' : hasFind ? 'finding' : '';
@@ -366,7 +403,11 @@ function renderTasks(tasks) {
         </div>
       </div>
     </div>`;
-  }).join('');
+      }).join('');
+
+      return `<div class="wo-group">${woHeader}${taskCards}</div>`;
+    }).join('');
+  })();
 
   wrap.innerHTML = startHtml + cardsHtml;
 
@@ -493,6 +534,43 @@ async function confirmarObs() {
   }]);
   if(error){ alert('Erro ao registrar: '+error.message); return; }
   fecharModalObs();
+  await carregarTasks();
+}
+
+// ─── IIO E RUNAP ────────────────────────────────────────────
+async function toggleIIO(woNumber, aircraftId, ativo) {
+  const novoValor = !ativo;
+  const {error} = await sb.from('tasks')
+    .update({has_iio: novoValor})
+    .eq('aircraft_id', aircraftId)
+    .eq('wo_number', woNumber);
+  if(error){alert('Erro ao atualizar IIO: '+error.message);return;}
+  if(novoValor){
+    await sb.from('observations').insert([{
+      task_id: (await sb.from('tasks').select('id').eq('aircraft_id',aircraftId).eq('wo_number',woNumber).limit(1)).data?.[0]?.id,
+      text: `[IIO] Segunda inspeção solicitada para WO ${woNumber}`,
+      author: 'Técnico',
+      recorded_at: agora()
+    }]);
+  }
+  await carregarTasks();
+}
+
+async function toggleRunap(woNumber, aircraftId, ativo) {
+  const novoValor = !ativo;
+  const {error} = await sb.from('tasks')
+    .update({has_runap: novoValor})
+    .eq('aircraft_id', aircraftId)
+    .eq('wo_number', woNumber);
+  if(error){alert('Erro ao atualizar RUNAP: '+error.message);return;}
+  if(novoValor){
+    await sb.from('observations').insert([{
+      task_id: (await sb.from('tasks').select('id').eq('aircraft_id',aircraftId).eq('wo_number',woNumber).limit(1)).data?.[0]?.id,
+      text: `[RUNAP] Giro de motor solicitado para WO ${woNumber}`,
+      author: 'Técnico',
+      recorded_at: agora()
+    }]);
+  }
   await carregarTasks();
 }
 

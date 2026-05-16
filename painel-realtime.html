@@ -78,6 +78,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .b-finding{background:#450a0a;color:#f87171;animation:blink 1.5s infinite;border:0.5px solid #7f1d1d}
 .b-obs{background:#1e3a5f;color:#60a5fa;border:0.5px solid #1e3a8a}
 .b-deferred{background:#422006;color:#fcd34d;border:0.5px solid #92400e}
+.b-iio{background:#3b0764;color:#d8b4fe;animation:blink 1.5s infinite;border:0.5px solid #6b21a8}
+.b-runap{background:#164e63;color:#a5f3fc;animation:blink 1.5s infinite;border:0.5px solid #0e7490}
 .mtl{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500}
 .mtl-ok{background:#052e16;color:#4ade80}
 .mtl-nhe{background:#422006;color:#fbbf24}
@@ -248,8 +250,13 @@ function render(data){
     let mb=null; for(const m of mo){if(mv.includes(m)){mb=m;break;}}
     const mh=mb==='OK'?`<span class="mtl mtl-ok">OK</span>`:mb==='NHE'?`<span class="mtl mtl-nhe">NHE</span>`:mb==='TST'?`<span class="mtl mtl-tst">TST</span>`:`<span class="mtl mtl-nd">—</span>`;
 
+    const acIIO   = tasks.some(t=>t.has_iio);
+    const acRunap = tasks.some(t=>t.has_runap);
+
     let sh;
-    if(hasFind)sh=`<span class="badge b-finding">⚠ Finding!</span>`;
+    if(hasFind) sh=`<span class="badge b-finding">⚠ Finding!</span>`;
+    else if(acIIO)   sh=`<span class="badge b-iio">🔍 IIO!</span>`;
+    else if(acRunap) sh=`<span class="badge b-runap">✈ RUNAP!</span>`;
     else if(pct===100)sh=`<span class="badge b-done">✓ Concluída</span>`;
     else if(started>0||done>0)sh=`<span class="badge b-started">▶ Andamento</span>`;
     else sh=`<span class="badge b-pending">Aguardando</span>`;
@@ -270,6 +277,8 @@ function render(data){
       const algumDeferido=woTasks.some(t=>t.deferred);
       const algumFind=woTasks.some(t=>t.has_finding||(t.findings||[]).some(f=>!f.resolved));
       const algumStarted=woTasks.some(t=>t.started&&!t.completed&&!t.deferred);
+      const woIIO=woTasks.some(t=>t.has_iio);
+      const woRunap=woTasks.some(t=>t.has_runap);
       const doneCnt=woTasks.filter(t=>t.completed).length;
       const defCnt=woTasks.filter(t=>t.deferred).length;
 
@@ -280,6 +289,9 @@ function render(data){
         :algumFind?`<span class="badge b-finding" style="font-size:9px;padding:2px 7px;animation:none">⚠ Finding</span>`
         :algumStarted?`<span class="badge b-started" style="font-size:9px;padding:2px 7px">▶ Andamento</span>`
         :`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
+
+      const iioTag  = woIIO  ? `<span class="badge b-iio"  style="font-size:9px;padding:2px 7px">🔍 IIO</span>`  : '';
+      const runapTag= woRunap? `<span class="badge b-runap" style="font-size:9px;padding:2px 7px">✈ RUNAP</span>` : '';
 
       // Listar cada sub-tarefa com obs
       const subTarefas=woTasks.map(task=>{
@@ -323,7 +335,7 @@ function render(data){
       return `<div class="task-item" style="background:${algumFind?'#180808':'transparent'}">
         <div class="task-header">
           <span class="task-wo-num">WO ${woNum}</span>
-          ${woSt}
+          ${woSt}${iioTag}${runapTag}
           <span style="font-size:10px;color:#475569">${doneCnt}/${woTasks.length} tarefa${woTasks.length!==1?'s':''}</span>
         </div>
         ${subTarefas}
@@ -741,6 +753,8 @@ async function salvarTurno(){
           descricao:task.description,
           concluida:task.completed||false,
           has_finding:task.has_finding||false,
+          has_iio:task.has_iio||false,
+          has_runap:task.has_runap||false,
           deferida:task.deferred||false,
           defer_reason:task.defer_reason||null,
           material:task.material,
@@ -814,10 +828,11 @@ function tocarAlerta(){
 
 function verificarNovosFindings(data){
   if(primeiroLoad){
-    // No primeiro load só registra os findings existentes, não alerta
     data.forEach(ac=>(ac.tasks||[]).forEach(t=>{
       if(t.has_finding||(t.findings||[]).some(f=>!f.resolved))
-        findingsConhecidos.add(t.id);
+        findingsConhecidos.add(t.id+'-find');
+      if(t.has_iio)   findingsConhecidos.add(t.id+'-iio');
+      if(t.has_runap) findingsConhecidos.add(t.id+'-runap');
     }));
     primeiroLoad = false;
     return;
@@ -825,11 +840,20 @@ function verificarNovosFindings(data){
   let novo = false;
   data.forEach(ac=>(ac.tasks||[]).forEach(t=>{
     const temFind = t.has_finding||(t.findings||[]).some(f=>!f.resolved);
-    if(temFind && !findingsConhecidos.has(t.id)){
-      findingsConhecidos.add(t.id);
-      novo = true;
+    if(temFind && !findingsConhecidos.has(t.id+'-find')){
+      findingsConhecidos.add(t.id+'-find'); novo = true;
     }
-    if(!temFind) findingsConhecidos.delete(t.id);
+    if(!temFind) findingsConhecidos.delete(t.id+'-find');
+
+    if(t.has_iio && !findingsConhecidos.has(t.id+'-iio')){
+      findingsConhecidos.add(t.id+'-iio'); novo = true;
+    }
+    if(!t.has_iio) findingsConhecidos.delete(t.id+'-iio');
+
+    if(t.has_runap && !findingsConhecidos.has(t.id+'-runap')){
+      findingsConhecidos.add(t.id+'-runap'); novo = true;
+    }
+    if(!t.has_runap) findingsConhecidos.delete(t.id+'-runap');
   }));
   if(novo) tocarAlerta();
 }
