@@ -47,13 +47,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .wo-group-actions{display:flex;gap:6px;flex-wrap:wrap}
 .wo-group .task-card{border-radius:0;border:none;border-bottom:0.5px solid #f1f5f9;margin-bottom:0}
 .wo-group .task-card:last-child{border-bottom:none}
-/* WO encerrada — cabeçalho normal, conteúdo apagado */
-.wo-group.encerrada{opacity:1}
-.wo-group.encerrada .wo-group-header{background:#f1f5f9;border-bottom-color:#e2e8f0;opacity:.6}
-.wo-group.encerrada .task-card{opacity:.25;filter:grayscale(.5)}
-/* WO pendente — destaque */
-.wo-group.pendente{border:1.5px solid #93c5fd;box-shadow:0 2px 8px rgba(59,130,246,.1)}
+/* WO encerrada */
+.wo-group.encerrada .wo-group-header{background:#f8fafc}
+/* WO pendente */
 .wo-group.pendente .wo-group-header{background:#eff6ff}
+.task-card.completed{opacity:.6}
+.task-card.deferred{background:#fffbeb;border-color:#fde68a}
 .task-card{background:#fff;border-radius:12px;border:0.5px solid #e2e8f0;margin-bottom:.875rem;overflow:hidden;transition:border-color .2s}
 .task-card.finding{border-left:3px solid #dc2626;border-radius:0 12px 12px 0}
 .task-card.completed{opacity:.3;filter:grayscale(.4)}
@@ -424,14 +423,7 @@ function renderTasks(tasks) {
       }).join('');
 
       return `<div class="wo-group ${clsGrupo}">${woHeader}${taskCards}</div>`;
-    })
-    // WOs pendentes primeiro, encerradas por último
-    .sort((a,b) => {
-      const aEnc = a.includes('class="wo-group encerrada"') ? 1 : 0;
-      const bEnc = b.includes('class="wo-group encerrada"') ? 1 : 0;
-      return aEnc - bEnc;
-    })
-    .join('');
+    }).join('');
   })();
 
   wrap.innerHTML = startHtml + cardsHtml;
