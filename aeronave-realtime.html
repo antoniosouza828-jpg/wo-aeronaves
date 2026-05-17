@@ -352,7 +352,7 @@ function renderTasks(tasks) {
             </button>
             <button class="act runap-btn ${woHasRunap?'ativo':''}"
               onclick="toggleRunap('${woNum}','${curAC.id}',${woHasRunap})">
-              ✈ RUNAP${woHasRunap?' · ATIVO':''}
+              ✈ Run-up${woHasRunap?' · ATIVO':''}
             </button>
           </div>
         </div>`;
@@ -554,7 +554,7 @@ async function confirmarObs() {
   await carregarTasks();
 }
 
-// ─── IIO E RUNAP ────────────────────────────────────────────
+// ─── IIO E RUN-UP ────────────────────────────────────────────
 async function toggleIIO(woNumber, aircraftId, ativo) {
   const novoValor = !ativo;
   const {error} = await sb.from('tasks')
@@ -579,11 +579,11 @@ async function toggleRunap(woNumber, aircraftId, ativo) {
     .update({has_runap: novoValor})
     .eq('aircraft_id', aircraftId)
     .eq('wo_number', woNumber);
-  if(error){alert('Erro ao atualizar RUNAP: '+error.message);return;}
+  if(error){alert('Erro ao atualizar Run-up: '+error.message);return;}
   if(novoValor){
     await sb.from('observations').insert([{
       task_id: (await sb.from('tasks').select('id').eq('aircraft_id',aircraftId).eq('wo_number',woNumber).limit(1)).data?.[0]?.id,
-      text: `[RUNAP] Giro de motor solicitado para WO ${woNumber}`,
+      text: `[Run-up] Giro de motor solicitado para WO ${woNumber}`,
       author: 'Técnico',
       recorded_at: agora()
     }]);

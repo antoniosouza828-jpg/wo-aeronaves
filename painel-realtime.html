@@ -256,7 +256,7 @@ function render(data){
     let sh;
     if(hasFind) sh=`<span class="badge b-finding">⚠ Finding!</span>`;
     else if(acIIO)   sh=`<span class="badge b-iio">🔍 IIO!</span>`;
-    else if(acRunap) sh=`<span class="badge b-runap">✈ RUNAP!</span>`;
+    else if(acRunap) sh=`<span class="badge b-runap">✈ Run-up!</span>`;
     else if(pct===100)sh=`<span class="badge b-done">✓ Concluída</span>`;
     else if(started>0||done>0)sh=`<span class="badge b-started">▶ Andamento</span>`;
     else sh=`<span class="badge b-pending">Aguardando</span>`;
@@ -291,7 +291,7 @@ function render(data){
         :`<span class="badge b-pending" style="font-size:9px;padding:2px 7px">Aguardando</span>`;
 
       const iioTag  = woIIO  ? `<span class="badge b-iio"  style="font-size:9px;padding:2px 7px">🔍 IIO</span>`  : '';
-      const runapTag= woRunap? `<span class="badge b-runap" style="font-size:9px;padding:2px 7px">✈ RUNAP</span>` : '';
+      const runapTag= woRunap? `<span class="badge b-runap" style="font-size:9px;padding:2px 7px">✈ Run-up</span>` : '';
 
       // Listar cada sub-tarefa com obs
       const subTarefas=woTasks.map(task=>{
